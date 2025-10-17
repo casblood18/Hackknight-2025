@@ -28,6 +28,7 @@ export default function Home() {
   const recognitionRef = useRef<any>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isActiveRef = useRef<boolean>(false);
 
   // Initialize speech recognition
   useEffect(() => {
@@ -43,6 +44,11 @@ export default function Home() {
         recognition.lang = "en-US";
 
         recognition.onresult = (event: any) => {
+          // Ignore results if conversation has ended
+          if (!isActiveRef.current) {
+            return;
+          }
+
           let interimTranscript = "";
           let finalTranscript = "";
 
@@ -56,13 +62,22 @@ export default function Home() {
           }
 
           if (finalTranscript) {
+            // Double-check before saving
+            if (!isActiveRef.current) {
+              return;
+            }
+
             const userMessage: Message = {
               id: Date.now().toString(),
               text: finalTranscript.trim(),
               sender: "user",
               timestamp: new Date(),
             };
-            setMessages((prev) => [...prev, userMessage]);
+            setMessages((prev) => {
+              // Check again right before updating (prevents race condition)
+              if (!isActiveRef.current) return prev;
+              return [...prev, userMessage];
+            });
             setCurrentTranscript("");
 
             // Send to backend
@@ -104,6 +119,11 @@ export default function Home() {
       };
 
       ws.onmessage = (event) => {
+        // Ignore messages if conversation has ended
+        if (!isActiveRef.current) {
+          return;
+        }
+
         const data = JSON.parse(event.data);
         if (data.type === "response") {
           const aiMessage: Message = {
@@ -112,10 +132,16 @@ export default function Home() {
             sender: "ai",
             timestamp: new Date(),
           };
-          setMessages((prev) => [...prev, aiMessage]);
+          setMessages((prev) => {
+            // Check again right before updating (prevents race condition)
+            if (!isActiveRef.current) return prev;
+            return [...prev, aiMessage];
+          });
 
-          // Speak the response
-          speakText(data.text);
+          // Speak the response only if still active
+          if (isActiveRef.current) {
+            speakText(data.text);
+          }
         }
       };
 
@@ -157,6 +183,7 @@ export default function Home() {
   };
 
   const handleStart = () => {
+    isActiveRef.current = true;
     setIsStarted(true);
     setTimeout(() => {
       if (recognitionRef.current) {
@@ -167,15 +194,27 @@ export default function Home() {
   };
 
   const handleEndConversation = () => {
+    // Immediately mark as inactive to prevent any new messages
+    isActiveRef.current = false;
+
+    // Stop speech recognition
     if (recognitionRef.current) {
       recognitionRef.current.stop();
+      recognitionRef.current = null;
     }
+
+    // Close WebSocket
     if (wsRef.current) {
       wsRef.current.close();
+      wsRef.current = null;
     }
+
+    // Cancel any ongoing speech
     if (window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
+
+    // Clear all state
     setIsListening(false);
     setIsStarted(false);
     setMessages([]);
@@ -187,49 +226,15 @@ export default function Home() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="mb-8">
-            <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-purple-500/20 to-purple-600/20 border border-purple-500/30 mb-12">
-              <svg
-                className="w-5 h-5 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 10V3L4 14h7v7l9-11h-7z"
-                />
-              </svg>
-              <span className="text-purple-300 font-medium">
-                Next-Gen Voice Intelligence
-              </span>
-            </div>
-          </div>
-
           <h1 className="text-6xl md:text-7xl font-bold mb-6 leading-tight">
             <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400 bg-clip-text text-transparent">
-              Your AI Voice Agent,
+              Hey! Let's have a chat.
             </span>
             <br />
-            <span className="bg-gradient-to-r from-orange-400 via-red-400 to-purple-400 bg-clip-text text-transparent">
-              Trained
-            </span>
-            <span className="text-purple-300"> on </span>
-            <span className="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-              Your Neural
-            </span>
-            <br />
-            <span className="bg-gradient-to-r from-pink-400 via-purple-400 to-orange-400 bg-clip-text text-transparent">
-              Network
-            </span>
           </h1>
 
           <p className="text-gray-400 text-lg md:text-xl max-w-3xl mx-auto mb-12 leading-relaxed">
-            Transform conversations into conversions with AI agents that think,
-            learn, and speak like your best employees—powered by neural networks
-            trained on your business DNA.
+            Train your small talk skills with AI-powered voice conversations.
           </p>
 
           <button
