@@ -27,6 +27,7 @@ export default function Home() {
   const [selectedScenario, setSelectedScenario] = useState("casual conversation");
   const recognitionRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isActiveRef = useRef<boolean>(false);
 
   const {
     messages,
@@ -51,7 +52,11 @@ export default function Home() {
         recognition.lang = "en-US";
 
         recognition.onresult = (event: any) => {
-          console.log('🎤 Speech recognition event received');
+          // Ignore results if conversation has ended
+          if (!isActiveRef.current) {
+            return;
+          }
+
           let interimTranscript = "";
           let finalTranscript = "";
 
@@ -120,7 +125,7 @@ export default function Home() {
   };
 
   const handleStart = () => {
-    console.log('🚀 Starting conversation...');
+    isActiveRef.current = true;
     setIsStarted(true);
     setTimeout(() => {
       if (recognitionRef.current) {
@@ -131,67 +136,42 @@ export default function Home() {
     }, 500);
   };
 
-  const handleEndConversation = async () => {
+  const handleEndConversation = () => {
+    // Immediately mark as inactive to prevent any new messages
+    isActiveRef.current = false;
+
+    // Stop speech recognition
     if (recognitionRef.current) {
       recognitionRef.current.stop();
+      recognitionRef.current = null;
     }
+
+    // Cancel any ongoing speech
     if (window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
+
+    // Clear all state
     setIsListening(false);
     setIsStarted(false);
     setCurrentTranscript("");
     setIsAiSpeaking(false);
-    await clearConversation().catch(console.error);
+    clearConversation().catch(console.error);
   };
 
   if (!isStarted) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="mb-8">
-            <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-purple-500/20 to-purple-600/20 border border-purple-500/30 mb-12">
-              <svg
-                className="w-5 h-5 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 10V3L4 14h7v7l9-11h-7z"
-                />
-              </svg>
-              <span className="text-purple-300 font-medium">
-                Next-Gen Voice Intelligence
-              </span>
-            </div>
-          </div>
-
           <h1 className="text-6xl md:text-7xl font-bold mb-6 leading-tight">
             <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400 bg-clip-text text-transparent">
-              Your AI Voice Agent,
+              Hey! Let's have a chat.
             </span>
             <br />
-            <span className="bg-gradient-to-r from-orange-400 via-red-400 to-purple-400 bg-clip-text text-transparent">
-              Trained
-            </span>
-            <span className="text-purple-300"> on </span>
-            <span className="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-              Your Neural
-            </span>
-            <br />
-            <span className="bg-gradient-to-r from-pink-400 via-purple-400 to-orange-400 bg-clip-text text-transparent">
-              Network
-            </span>
           </h1>
 
           <p className="text-gray-400 text-lg md:text-xl max-w-3xl mx-auto mb-12 leading-relaxed">
-            Transform conversations into conversions with AI agents that think,
-            learn, and speak like your best employees—powered by neural networks
-            trained on your business DNA.
+            Train your small talk skills with AI-powered voice conversations.
           </p>
 
           <button
