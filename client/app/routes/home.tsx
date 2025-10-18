@@ -1,5 +1,6 @@
 import type { Route } from "./+types/home";
 import { useState, useEffect, useRef } from "react";
+import { useSpeechAI } from "../hooks/useSpeechAI";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -13,7 +14,6 @@ export function meta({}: Route.MetaArgs) {
 }
 
 interface Message {
-  id: string;
   text: string;
   sender: "user" | "ai";
   timestamp: Date;
@@ -21,13 +21,22 @@ interface Message {
 
 export default function Home() {
   const [isStarted, setIsStarted] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
   const [isListening, setIsListening] = useState(false);
   const [currentTranscript, setCurrentTranscript] = useState("");
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
+  const [selectedScenario, setSelectedScenario] = useState("casual conversation");
   const recognitionRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isActiveRef = useRef<boolean>(false);
+
+  const {
+    messages,
+    isProcessing,
+    sendMessage,
+    setScenario,
+    clearConversation,
+    error
+  } = useSpeechAI('session-' + Date.now());
 
   // Initialize speech recognition
   useEffect(() => {
@@ -54,33 +63,18 @@ export default function Home() {
           for (let i = event.resultIndex; i < event.results.length; i++) {
             const transcript = event.results[i][0].transcript;
             if (event.results[i].isFinal) {
+              console.log('✨ Final transcript:', transcript);
               finalTranscript += transcript + " ";
             } else {
+              console.log('🔄 Interim transcript:', transcript);
               interimTranscript += transcript;
             }
           }
 
           if (finalTranscript) {
-            // Double-check before saving
-            if (!isActiveRef.current) {
-              return;
-            }
-
-            const userMessage: Message = {
-              id: Date.now().toString(),
-              text: finalTranscript.trim(),
-              sender: "user",
-              timestamp: new Date(),
-            };
-            setMessages((prev) => {
-              // Check again right before updating (prevents race condition)
-              if (!isActiveRef.current) return prev;
-              return [...prev, userMessage];
-            });
             setCurrentTranscript("");
-
-            // Send to backend via HTTP
-            sendMessageToBackend(finalTranscript.trim());
+            // Send to AI
+            sendMessage(finalTranscript.trim()).catch(console.error);
           } else {
             setCurrentTranscript(interimTranscript);
           }
@@ -101,52 +95,12 @@ export default function Home() {
     }
   }, [isStarted, isListening]);
 
-  // Send message to backend via HTTP
-  const sendMessageToBackend = async (text: string) => {
-    try {
-      const response = await fetch("http://localhost:5000/api/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: text,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to get response from server");
-      }
-
-      const data = await response.json();
-
-      // Check if still active before adding AI response
-      if (!isActiveRef.current) {
-        return;
-      }
-
-      const aiMessage: Message = {
-        id: Date.now().toString(),
-        text: data.response,
-        sender: "ai",
-        timestamp: new Date(),
-      };
-
-      setMessages((prev) => {
-        // Check again right before updating (prevents race condition)
-        if (!isActiveRef.current) return prev;
-        return [...prev, aiMessage];
-      });
-
-      // Speak the response only if still active
-      if (isActiveRef.current) {
-        speakText(data.response);
-      }
-    } catch (error) {
-      console.error("Error sending message:", error);
-      // Optionally show error to user
+  // Set initial scenario when conversation starts
+  useEffect(() => {
+    if (isStarted) {
+      setScenario(selectedScenario).catch(console.error);
     }
-  };
+  }, [isStarted, selectedScenario, setScenario]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -174,6 +128,7 @@ export default function Home() {
     setIsStarted(true);
     setTimeout(() => {
       if (recognitionRef.current) {
+        console.log('🎤 Starting speech recognition');
         recognitionRef.current.start();
         setIsListening(true);
       }
@@ -198,9 +153,9 @@ export default function Home() {
     // Clear all state
     setIsListening(false);
     setIsStarted(false);
-    setMessages([]);
     setCurrentTranscript("");
     setIsAiSpeaking(false);
+    clearConversation().catch(console.error);
   };
 
   if (!isStarted) {
@@ -290,9 +245,9 @@ export default function Home() {
             </div>
           )}
 
-          {messages.map((message) => (
+          {messages.map((message, index) => (
             <div
-              key={message.id}
+              key={index}
               className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
             >
               <div
