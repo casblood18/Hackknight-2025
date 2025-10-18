@@ -95,7 +95,6 @@ export default function Home() {
     }
   }, [isStarted, isListening]);
 
-  // Connect to WebSocket
   // Set initial scenario when conversation starts
   useEffect(() => {
     if (isStarted) {

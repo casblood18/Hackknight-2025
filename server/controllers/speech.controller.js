@@ -1,6 +1,6 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-const { ElevenLabsClient } = require('@elevenlabs/elevenlabs-js');
-require('dotenv').config();
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { ElevenLabsClient, play } from '@elevenlabs/elevenlabs-js';
+import 'dotenv/config';
 
 // Debug: Check if environment variables are loaded
 console.log('Environment check:');
@@ -16,7 +16,7 @@ const elevenlabs = new ElevenLabsClient({
 // Store conversation contexts
 const conversations = new Map();
 
-exports.processMessage = async (req, res) => {
+export const processMessage = async (req, res) => {
   try {
     console.log('\n🎯 Processing new message...');
     const { message, sessionId, scenario } = req.body;
@@ -60,13 +60,20 @@ exports.processMessage = async (req, res) => {
       Keep responses concise but engaging.
     `;
 
-    // Get response from Gemini
+    // GEMINI PROMPTING API CODE (commented out)
+    /*
     console.log('🤖 Sending request to Gemini...');
-    // const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    // const result = await model.generateContent(prompt);
-    // const aiResponse = result.response.text();
-    const aiResponse = "hey man"
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const result = await model.generateContent(prompt);
+    const aiResponse = result.response.text();
     console.log('✨ Gemini response:', aiResponse);
+    */
+
+    // Mock response generation
+    console.log('🤖 Generating mock response...');
+    let aiResponse = 'mock response';
+        
+    console.log('✨ Mock response generated:', aiResponse);
 
     // Add AI response to history
     conversation.messages.push({
@@ -74,9 +81,9 @@ exports.processMessage = async (req, res) => {
       content: aiResponse
     });
 
-    // Generate speech from response
+    // REAL API CODE (commented out)
     console.log('🔊 Converting to speech with ElevenLabs...');
-    const audioStream = await elevenlabs.textToSpeech.convert(
+    const audio = await elevenlabs.textToSpeech.convert(
       "21m00Tcm4TlvDq8ikWAM", // Default voice ID
       {
         text: aiResponse,
@@ -85,6 +92,7 @@ exports.processMessage = async (req, res) => {
       }
     );
     console.log('🎵 Audio stream received from ElevenLabs');
+
 
     // Convert stream to buffer
     // const chunks = [];
@@ -95,11 +103,21 @@ exports.processMessage = async (req, res) => {
     //   chunks.push(value);
     // }
     // const audioBuffer = Buffer.concat(chunks);
+    
 
-    // Send response with both text and audio
+    // Mock audio generation
+    // console.log('🔊 Mocking audio response...');
+    // const audioBuffer = null; // Mock empty audio buffer
+    try{
+        play(audio);
+    } catch (err) {
+        throw(err);
+    }
+
+    // Send response
     res.json({
       text: aiResponse,
-      audio: audioStream,
+    //   audio: audio,
       scenario: conversation.scenario,
       history: conversation.messages
     });
@@ -113,7 +131,7 @@ exports.processMessage = async (req, res) => {
   }
 };
 
-exports.clearContext = (req, res) => {
+export const clearContext = (req, res) => {
   const { sessionId } = req.body;
   
   if (!sessionId) {
@@ -124,7 +142,7 @@ exports.clearContext = (req, res) => {
   res.json({ message: 'Conversation context cleared' });
 };
 
-exports.updateScenario = (req, res) => {
+export const updateScenario = (req, res) => {
   const { sessionId, scenario } = req.body;
 
   if (!sessionId || !scenario) {

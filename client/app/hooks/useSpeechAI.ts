@@ -41,6 +41,7 @@ export function useSpeechAI(sessionId: string = 'default'): UseSpeechAIReturn {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
         body: JSON.stringify({
           message: text,
@@ -48,12 +49,18 @@ export function useSpeechAI(sessionId: string = 'default'): UseSpeechAIReturn {
         }),
       });
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('📛 Server error details:', errorText);
+        throw new Error(`Server error ${response.status}: ${errorText}`);
+      }
+
       console.log('🔍 Response status:', response.status);
-    //   if (!response.ok) {
-    //     const errorData = await response.text();
-    //     console.error('📛 Server error details:', errorData);
-    //     throw new Error(`Server error: ${errorData}`);
-    //   }
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error('📛 Server error details:', errorData);
+        throw new Error(`Server error: ${errorData}`);
+      }
 
       const data = await response.json();
       console.log('🤖 Received AI response:', data);
@@ -67,13 +74,6 @@ export function useSpeechAI(sessionId: string = 'default'): UseSpeechAIReturn {
           timestamp: new Date()
         }];
       });
-
-      // Play audio if available
-      if (data.audio) {
-        console.log('🔊 Received audio, preparing to play...');
-        await play(data.audio);
-        console.log('🎶 Audio playback started');
-      }
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');

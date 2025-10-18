@@ -1,14 +1,15 @@
-const express = require('express');
+import express from 'express';
+import { processMessage, clearContext, updateScenario } from '../controllers/speech.controller.js';
+
 const router = express.Router();
-const speechController = require('../controllers/speech.controller');
 
 // Process a message and get AI response with speech
-router.post('/process', speechController.processMessage);
+router.post('/process', processMessage);
 
 // Clear conversation context
-router.post('/clear', speechController.clearContext);
+router.post('/clear', clearContext);
 
 // Update conversation scenario
-router.post('/scenario', speechController.updateScenario);
+router.post('/scenario', updateScenario);
 
-module.exports = router;
+export default router;
