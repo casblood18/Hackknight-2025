@@ -1,3 +1,4 @@
+import { play } from '@elevenlabs/elevenlabs-js';
 import { useState, useCallback } from 'react';
 
 interface Message {
@@ -48,11 +49,11 @@ export function useSpeechAI(sessionId: string = 'default'): UseSpeechAIReturn {
       });
 
       console.log('🔍 Response status:', response.status);
-      if (!response.ok) {
-        const errorData = await response.text();
-        console.error('📛 Server error details:', errorData);
-        throw new Error(`Server error: ${errorData}`);
-      }
+    //   if (!response.ok) {
+    //     const errorData = await response.text();
+    //     console.error('📛 Server error details:', errorData);
+    //     throw new Error(`Server error: ${errorData}`);
+    //   }
 
       const data = await response.json();
       console.log('🤖 Received AI response:', data);
@@ -70,13 +71,8 @@ export function useSpeechAI(sessionId: string = 'default'): UseSpeechAIReturn {
       // Play audio if available
       if (data.audio) {
         console.log('🔊 Received audio, preparing to play...');
-        const audioBlob = new Blob([new Uint8Array(data.audio)], { type: 'audio/mp3' });
-        const audioUrl = URL.createObjectURL(audioBlob);
-        console.log('🎵 Created audio URL:', audioUrl);
-        const audio = new Audio(audioUrl);
-        await audio.play();
+        await play(data.audio);
         console.log('🎶 Audio playback started');
-        URL.revokeObjectURL(audioUrl);
       }
 
     } catch (err) {

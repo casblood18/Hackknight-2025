@@ -62,9 +62,10 @@ exports.processMessage = async (req, res) => {
 
     // Get response from Gemini
     console.log('🤖 Sending request to Gemini...');
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    const result = await model.generateContent(prompt);
-    const aiResponse = result.response.text();
+    // const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    // const result = await model.generateContent(prompt);
+    // const aiResponse = result.response.text();
+    const aiResponse = "hey man"
     console.log('✨ Gemini response:', aiResponse);
 
     // Add AI response to history
@@ -86,19 +87,19 @@ exports.processMessage = async (req, res) => {
     console.log('🎵 Audio stream received from ElevenLabs');
 
     // Convert stream to buffer
-    const chunks = [];
-    const reader = audioStream.getReader();
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(value);
-    }
-    const audioBuffer = Buffer.concat(chunks);
+    // const chunks = [];
+    // const reader = audioStream.getReader();
+    // while (true) {
+    //   const { done, value } = await reader.read();
+    //   if (done) break;
+    //   chunks.push(value);
+    // }
+    // const audioBuffer = Buffer.concat(chunks);
 
     // Send response with both text and audio
     res.json({
       text: aiResponse,
-      audio: audioBuffer,
+      audio: audioStream,
       scenario: conversation.scenario,
       history: conversation.messages
     });
