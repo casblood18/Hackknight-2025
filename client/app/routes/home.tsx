@@ -1,5 +1,6 @@
 import type { Route } from "./+types/home";
 import { useState, useEffect, useRef } from "react";
+import { useSpeechAI } from "../hooks/useSpeechAI";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -13,7 +14,6 @@ export function meta({}: Route.MetaArgs) {
 }
 
 interface Message {
-  id: string;
   text: string;
   sender: "user" | "ai";
   timestamp: Date;
@@ -21,13 +21,21 @@ interface Message {
 
 export default function Home() {
   const [isStarted, setIsStarted] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
   const [isListening, setIsListening] = useState(false);
   const [currentTranscript, setCurrentTranscript] = useState("");
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
+  const [selectedScenario, setSelectedScenario] = useState("casual conversation");
   const recognitionRef = useRef<any>(null);
-  const wsRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const {
+    messages,
+    isProcessing,
+    sendMessage,
+    setScenario,
+    clearConversation,
+    error
+  } = useSpeechAI('session-' + Date.now());
 
   // Initialize speech recognition
   useEffect(() => {
@@ -43,37 +51,25 @@ export default function Home() {
         recognition.lang = "en-US";
 
         recognition.onresult = (event: any) => {
+          console.log('🎤 Speech recognition event received');
           let interimTranscript = "";
           let finalTranscript = "";
 
           for (let i = event.resultIndex; i < event.results.length; i++) {
             const transcript = event.results[i][0].transcript;
             if (event.results[i].isFinal) {
+              console.log('✨ Final transcript:', transcript);
               finalTranscript += transcript + " ";
             } else {
+              console.log('🔄 Interim transcript:', transcript);
               interimTranscript += transcript;
             }
           }
 
           if (finalTranscript) {
-            const userMessage: Message = {
-              id: Date.now().toString(),
-              text: finalTranscript.trim(),
-              sender: "user",
-              timestamp: new Date(),
-            };
-            setMessages((prev) => [...prev, userMessage]);
             setCurrentTranscript("");
-
-            // Send to backend
-            if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-              wsRef.current.send(
-                JSON.stringify({
-                  type: "message",
-                  text: finalTranscript.trim(),
-                })
-              );
-            }
+            // Send to AI
+            sendMessage(finalTranscript.trim()).catch(console.error);
           } else {
             setCurrentTranscript(interimTranscript);
           }
@@ -95,45 +91,12 @@ export default function Home() {
   }, [isStarted, isListening]);
 
   // Connect to WebSocket
+  // Set initial scenario when conversation starts
   useEffect(() => {
     if (isStarted) {
-      const ws = new WebSocket("ws://localhost:5000");
-
-      ws.onopen = () => {
-        console.log("Connected to server");
-      };
-
-      ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.type === "response") {
-          const aiMessage: Message = {
-            id: Date.now().toString(),
-            text: data.text,
-            sender: "ai",
-            timestamp: new Date(),
-          };
-          setMessages((prev) => [...prev, aiMessage]);
-
-          // Speak the response
-          speakText(data.text);
-        }
-      };
-
-      ws.onerror = (error) => {
-        console.error("WebSocket error:", error);
-      };
-
-      ws.onclose = () => {
-        console.log("Disconnected from server");
-      };
-
-      wsRef.current = ws;
-
-      return () => {
-        ws.close();
-      };
+      setScenario(selectedScenario).catch(console.error);
     }
-  }, [isStarted]);
+  }, [isStarted, selectedScenario, setScenario]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -157,30 +120,29 @@ export default function Home() {
   };
 
   const handleStart = () => {
+    console.log('🚀 Starting conversation...');
     setIsStarted(true);
     setTimeout(() => {
       if (recognitionRef.current) {
+        console.log('🎤 Starting speech recognition');
         recognitionRef.current.start();
         setIsListening(true);
       }
     }, 500);
   };
 
-  const handleEndConversation = () => {
+  const handleEndConversation = async () => {
     if (recognitionRef.current) {
       recognitionRef.current.stop();
-    }
-    if (wsRef.current) {
-      wsRef.current.close();
     }
     if (window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
     setIsListening(false);
     setIsStarted(false);
-    setMessages([]);
     setCurrentTranscript("");
     setIsAiSpeaking(false);
+    await clearConversation().catch(console.error);
   };
 
   if (!isStarted) {
@@ -304,9 +266,9 @@ export default function Home() {
             </div>
           )}
 
-          {messages.map((message) => (
+          {messages.map((message, index) => (
             <div
-              key={message.id}
+              key={index}
               className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
             >
               <div

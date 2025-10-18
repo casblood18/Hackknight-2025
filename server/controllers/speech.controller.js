@@ -2,6 +2,11 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { ElevenLabsClient } = require('@elevenlabs/elevenlabs-js');
 require('dotenv').config();
 
+// Debug: Check if environment variables are loaded
+console.log('Environment check:');
+console.log('GEMINI_API_KEY exists:', !!process.env.GEMINI_API_KEY);
+console.log('ELEVENLABS_API_KEY exists:', !!process.env.ELEVENLABS_API_KEY);
+
 // Initialize APIs
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const elevenlabs = new ElevenLabsClient({
@@ -13,14 +18,18 @@ const conversations = new Map();
 
 exports.processMessage = async (req, res) => {
   try {
+    console.log('\n🎯 Processing new message...');
     const { message, sessionId, scenario } = req.body;
+    console.log('📝 Received:', { message, sessionId, scenario });
 
     if (!message) {
+      console.log('❌ Error: Message is required');
       return res.status(400).json({ error: 'Message is required' });
     }
 
     // Get or initialize conversation history
     if (!conversations.has(sessionId)) {
+      console.log('🆕 Creating new conversation for session:', sessionId);
       conversations.set(sessionId, {
         messages: [],
         scenario: scenario || 'casual conversation'
@@ -28,6 +37,8 @@ exports.processMessage = async (req, res) => {
     }
 
     const conversation = conversations.get(sessionId);
+    console.log('🗣️ Current scenario:', conversation.scenario);
+    console.log('💬 Message history length:', conversation.messages.length);
 
     // Update scenario if provided
     if (scenario) {
@@ -50,10 +61,11 @@ exports.processMessage = async (req, res) => {
     `;
 
     // Get response from Gemini
-    console.log('Sending request to Gemini...');
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    console.log('🤖 Sending request to Gemini...');
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const result = await model.generateContent(prompt);
     const aiResponse = result.response.text();
+    console.log('✨ Gemini response:', aiResponse);
 
     // Add AI response to history
     conversation.messages.push({
@@ -62,7 +74,7 @@ exports.processMessage = async (req, res) => {
     });
 
     // Generate speech from response
-    console.log('Converting to speech with ElevenLabs...');
+    console.log('🔊 Converting to speech with ElevenLabs...');
     const audioStream = await elevenlabs.textToSpeech.convert(
       "21m00Tcm4TlvDq8ikWAM", // Default voice ID
       {
@@ -71,6 +83,7 @@ exports.processMessage = async (req, res) => {
         outputFormat: "mp3_44100_128",
       }
     );
+    console.log('🎵 Audio stream received from ElevenLabs');
 
     // Convert stream to buffer
     const chunks = [];
