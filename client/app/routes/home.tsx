@@ -26,7 +26,6 @@ export default function Home() {
   const [currentTranscript, setCurrentTranscript] = useState("");
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const recognitionRef = useRef<any>(null);
-  const wsRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isActiveRef = useRef<boolean>(false);
 
@@ -80,15 +79,8 @@ export default function Home() {
             });
             setCurrentTranscript("");
 
-            // Send to backend
-            if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-              wsRef.current.send(
-                JSON.stringify({
-                  type: "message",
-                  text: finalTranscript.trim(),
-                })
-              );
-            }
+            // Send to backend via HTTP
+            sendMessageToBackend(finalTranscript.trim());
           } else {
             setCurrentTranscript(interimTranscript);
           }
@@ -109,57 +101,52 @@ export default function Home() {
     }
   }, [isStarted, isListening]);
 
-  // Connect to WebSocket
-  useEffect(() => {
-    if (isStarted) {
-      const ws = new WebSocket("ws://localhost:5000");
+  // Send message to backend via HTTP
+  const sendMessageToBackend = async (text: string) => {
+    try {
+      const response = await fetch("http://localhost:5000/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: text,
+        }),
+      });
 
-      ws.onopen = () => {
-        console.log("Connected to server");
+      if (!response.ok) {
+        throw new Error("Failed to get response from server");
+      }
+
+      const data = await response.json();
+
+      // Check if still active before adding AI response
+      if (!isActiveRef.current) {
+        return;
+      }
+
+      const aiMessage: Message = {
+        id: Date.now().toString(),
+        text: data.response,
+        sender: "ai",
+        timestamp: new Date(),
       };
 
-      ws.onmessage = (event) => {
-        // Ignore messages if conversation has ended
-        if (!isActiveRef.current) {
-          return;
-        }
+      setMessages((prev) => {
+        // Check again right before updating (prevents race condition)
+        if (!isActiveRef.current) return prev;
+        return [...prev, aiMessage];
+      });
 
-        const data = JSON.parse(event.data);
-        if (data.type === "response") {
-          const aiMessage: Message = {
-            id: Date.now().toString(),
-            text: data.text,
-            sender: "ai",
-            timestamp: new Date(),
-          };
-          setMessages((prev) => {
-            // Check again right before updating (prevents race condition)
-            if (!isActiveRef.current) return prev;
-            return [...prev, aiMessage];
-          });
-
-          // Speak the response only if still active
-          if (isActiveRef.current) {
-            speakText(data.text);
-          }
-        }
-      };
-
-      ws.onerror = (error) => {
-        console.error("WebSocket error:", error);
-      };
-
-      ws.onclose = () => {
-        console.log("Disconnected from server");
-      };
-
-      wsRef.current = ws;
-
-      return () => {
-        ws.close();
-      };
+      // Speak the response only if still active
+      if (isActiveRef.current) {
+        speakText(data.response);
+      }
+    } catch (error) {
+      console.error("Error sending message:", error);
+      // Optionally show error to user
     }
-  }, [isStarted]);
+  };
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -201,12 +188,6 @@ export default function Home() {
     if (recognitionRef.current) {
       recognitionRef.current.stop();
       recognitionRef.current = null;
-    }
-
-    // Close WebSocket
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
     }
 
     // Cancel any ongoing speech
