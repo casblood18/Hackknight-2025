@@ -60,12 +60,20 @@ export const processMessage = async (req, res) => {
 
     // Call Gemini service to generate AI response
     let aiResponse;
-    try {
-      aiResponse = await generateFromGemini(prompt);
-      console.log('✨ Gemini response:', aiResponse);
-    } catch (err) {
-      console.warn('Gemini service failed, falling back to mock response:', err.message);
-      aiResponse = 'mock response';
+    switch (process.env.STAGE) {
+      case 'prod':
+        try {
+          aiResponse = await generateFromGemini(prompt);
+          console.log('✨ Gemini response:', aiResponse);
+        } catch (err) {
+          console.warn('Gemini service failed, falling back to mock response:', err.message);
+          aiResponse = 'mock response';
+        }
+      case 'dev':
+        // Mock response generation
+        console.log('🤖 Generating mock response...');
+        aiResponse = 'mock response';
+        break;    
     }
 
     // Add AI response to history
@@ -76,28 +84,33 @@ export const processMessage = async (req, res) => {
 
     // Use ElevenLabs service to synthesize speech (returns Buffer)
     let audioBuffer = null;
-    try {
-      audioBuffer = await synthesizeSpeech(aiResponse, voiceId || process.env.DEFAULT_VOICE_ID);
-      console.log('🎵 Audio buffer generated from ElevenLabs service');
-    } catch (err) {
-      console.warn('ElevenLabs service failed or not configured:', err.message);
-      audioBuffer = null;
-    }
-
-    // Attempt server-side playback for dev/testing
-    if (audioBuffer) {
-      try {
-        await play(audioBuffer);
-        console.log('▶️ Played audio on server');
-      } catch (err) {
-        console.warn('Server playback failed:', err.message);
-      }
+    switch (process.env.STAGE) {
+      case 'prod':
+        try {
+          audioBuffer = await synthesizeSpeech(aiResponse, voiceId || process.env.DEFAULT_VOICE_ID);
+          console.log('🎵 Audio buffer generated from ElevenLabs service');
+        } catch (err) {
+          console.warn('ElevenLabs service failed or not configured:', err.message);
+          audioBuffer = null;
+        }
+            // Attempt server-side playback for dev/testing
+        if (audioBuffer) {
+          try {
+            await play(audioBuffer);
+            console.log('▶️ Played audio on server');
+          } catch (err) {
+            console.warn('Server playback failed:', err.message);
+          }
+        }
+      case 'dev':
+        break;
     }
 
     // Send response
     res.json({
       text: aiResponse,
       audio: audioBuffer ? audioBuffer.toString('base64') : null,
+
       scenario: conversation.scenario,
       history: conversation.messages
     });
