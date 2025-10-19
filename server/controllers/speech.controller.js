@@ -1,17 +1,16 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import { ElevenLabsClient, play } from '@elevenlabs/elevenlabs-js';
+// import { GoogleGenerativeAI } from '@google/generative-ai';
+import { play } from '@elevenlabs/elevenlabs-js';
 import 'dotenv/config';
+import { generateFromGemini } from '../services/gemini.service.js';
+import { synthesizeSpeech } from '../services/elevenlabs.service.js';
 
 // Debug: Check if environment variables are loaded
 console.log('Environment check:');
 console.log('GEMINI_API_KEY exists:', !!process.env.GEMINI_API_KEY);
 console.log('ELEVENLABS_API_KEY exists:', !!process.env.ELEVENLABS_API_KEY);
+console.log('STAGE exists:', process.env.STAGE);
 
-// Initialize APIs
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const elevenlabs = new ElevenLabsClient({
-  apiKey: process.env.ELEVENLABS_API_KEY
-});
+// Note: Gemini and ElevenLabs calls are handled by services in /services
 
 // Store conversation contexts
 const conversations = new Map();
@@ -19,7 +18,7 @@ const conversations = new Map();
 export const processMessage = async (req, res) => {
   try {
     console.log('\n🎯 Processing new message...');
-    const { message, sessionId, scenario } = req.body;
+    const { message, sessionId, scenario, voiceId } = req.body;
     console.log('📝 Received:', { message, sessionId, scenario });
 
     if (!message) {
@@ -60,24 +59,24 @@ export const processMessage = async (req, res) => {
       Keep responses concise but engaging.
     `;
 
-    let aiResponse = "";
-    // GEMINI PROMPTING API CODE
+    // Call Gemini service to generate AI response
+    let aiResponse;
     switch (process.env.STAGE) {
       case 'prod':
-        console.log('🤖 Sending request to Gemini...');
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
-        const result = await model.generateContent(prompt);
-        aiResponse = result.response.text();
-        console.log('✨ Gemini response:', aiResponse);
+        try {
+          aiResponse = await generateFromGemini(prompt);
+          console.log('✨ Gemini response:', aiResponse);
+        } catch (err) {
+          console.warn('Gemini service failed, falling back to mock response:', err.message);
+          aiResponse = 'mock response';
+        }
         break;
-
       case 'dev':
         // Mock response generation
         console.log('🤖 Generating mock response...');
         aiResponse = 'mock response';
         break;    
     }
-    console.log('✨ Mock response generated:', aiResponse);
 
     // Add AI response to history
     conversation.messages.push({
@@ -85,25 +84,27 @@ export const processMessage = async (req, res) => {
       content: aiResponse
     });
 
-    // ELEVENLABS API CODE
+    // Use ElevenLabs service to synthesize speech (returns Buffer)
+    let audioBuffer = null;
     switch (process.env.STAGE) {
       case 'prod':
-        console.log('🔊 Converting to speech with ElevenLabs...');
-        const audio = await elevenlabs.textToSpeech.convert(
-          "21m00Tcm4TlvDq8ikWAM", // Default voice ID
-          {
-            text: aiResponse,
-            modelId: "eleven_multilingual_v2",
-            outputFormat: "mp3_44100_128",
+        try {
+          audioBuffer = await synthesizeSpeech(aiResponse);
+          console.log('🎵 Audio buffer generated from ElevenLabs service');
+        } catch (err) {
+          console.warn('ElevenLabs service failed or not configured:', err.message);
+          audioBuffer = null;
+        }
+            // Attempt server-side playback for dev/testing
+        if (audioBuffer) {
+          try {
+            play(audioBuffer);
+            console.log('▶️ Played audio on server');
+          } catch (err) {
+            console.warn('Server playback failed:', err.message);
           }
-        );
-        console.log('🎵 Audio stream received from ElevenLabs');
-
-        try{ play(audio); } 
-        catch (err) { throw(err); }
-
+        }
         break;
-      
       case 'dev':
         break;
     }
@@ -111,6 +112,8 @@ export const processMessage = async (req, res) => {
     // Send response
     res.json({
       text: aiResponse,
+      audio: audioBuffer ? audioBuffer.toString('base64') : null,
+
       scenario: conversation.scenario,
       history: conversation.messages
     });
