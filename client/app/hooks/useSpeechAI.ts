@@ -1,11 +1,19 @@
 import { play } from "@elevenlabs/elevenlabs-js";
 import { useState, useCallback } from "react";
 
-interface Message {
+export interface Message {
   id: string;
   text: string;
   sender: "user" | "ai";
   timestamp: Date;
+}
+
+// FeedbackMap is a hashmap where keys are aliases and values are [original_text, feedback]
+export type FeedbackMap = Record<string, [string, string]>;
+
+export interface FeedbackResponse {
+  annotatedMessages: Message[];
+  feedbackMap: FeedbackMap;
 }
 
 interface UseSpeechAIReturn {
@@ -150,4 +158,44 @@ export function useSpeechAI(sessionId: string = "default"): UseSpeechAIReturn {
     clearConversation,
     error,
   };
+}
+
+/**
+ * Get feedback analysis for a conversation from the backend
+ * @param messages - Array of conversation messages
+ * @param sessionId - Session identifier
+ * @returns Promise with annotated messages and feedback map
+ */
+export async function getFeedbackAnalysis(
+  messages: Message[],
+  sessionId: string
+): Promise<FeedbackResponse> {
+  try {
+    const response = await fetch("http://localhost:5001/feedback", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messages,
+        sessionId,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Failed to get feedback: ${response.status} - ${errorText}`
+      );
+    }
+
+    const data = await response.json();
+    return {
+      annotatedMessages: data.annotatedMessages || [],
+      feedbackMap: data.feedbackMap || {},
+    };
+  } catch (error) {
+    console.error("Error getting feedback analysis:", error);
+    throw error;
+  }
 }

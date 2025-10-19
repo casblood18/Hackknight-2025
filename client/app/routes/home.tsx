@@ -39,6 +39,7 @@ export default function Home() {
   const recognitionRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isActiveRef = useRef<boolean>(false);
+  const sessionIdRef = useRef<string>("session-" + Date.now()); // Store sessionId
 
   const {
     messages,
@@ -47,7 +48,7 @@ export default function Home() {
     setScenario,
     clearConversation,
     error,
-  } = useSpeechAI("session-" + Date.now());
+  } = useSpeechAI(sessionIdRef.current);
 
   // Initialize speech recognition
   useEffect(() => {
@@ -170,10 +171,17 @@ export default function Home() {
     setIsStarted(false);
     setCurrentTranscript("");
     setIsAiSpeaking(false);
-    clearConversation().catch(console.error);
 
-    // Navigate to results page
-    navigate("/results");
+    // Navigate to results page with conversation data
+    navigate("/results", {
+      state: {
+        messages: messages,
+        sessionId: sessionIdRef.current,
+      },
+    });
+
+    // Clear conversation after navigation
+    clearConversation().catch(console.error);
   };
 
   if (!isStarted) {
