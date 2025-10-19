@@ -2,6 +2,15 @@ import type { Route } from "./+types/home";
 import { useState, useEffect, useRef } from "react";
 import { useSpeechAI } from "../hooks/useSpeechAI";
 
+// Feature 2: Define available scenarios
+const SCENARIOS = [
+  "Casual",
+  "Job Interview",
+  "Dating",
+  "Networking Event",
+  "Customer Support",
+];
+
 export function meta({}: Route.MetaArgs) {
   return [
     { title: "Small Talk Trainer - Practice Your Conversation Skills" },
@@ -24,7 +33,7 @@ export default function Home() {
   const [isListening, setIsListening] = useState(false);
   const [currentTranscript, setCurrentTranscript] = useState("");
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
-  const [selectedScenario, setSelectedScenario] = useState("casual conversation");
+  const [selectedScenario, setSelectedScenario] = useState(SCENARIOS[0]); // Feature 2: State for selected scenario
   const recognitionRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isActiveRef = useRef<boolean>(false);
@@ -124,6 +133,10 @@ export default function Home() {
   };
 
   const handleStart = () => {
+    // Feature 1: Clear all state for a fresh session
+    setCurrentTranscript("");
+    setIsAiSpeaking(false);
+
     isActiveRef.current = true;
     setIsStarted(true);
     setTimeout(() => {
@@ -169,9 +182,36 @@ export default function Home() {
             <br />
           </h1>
 
-          <p className="text-gray-400 text-lg md:text-xl max-w-3xl mx-auto mb-12 leading-relaxed">
+          <p className="text-gray-400 text-lg md:text-xl max-w-3xl mx-auto mb-8 leading-relaxed">
             Train your small talk skills with AI-powered voice conversations.
           </p>
+
+          {/* Feature 2: Scenario Selector UI */}
+          <div className="mb-10 max-w-xs mx-auto">
+            <label htmlFor="scenario-select" className="block text-lg font-medium text-gray-400 mb-2 text-left">
+              Pick a Conversation Scenario:
+            </label>
+            <select
+              id="scenario-select"
+              value={selectedScenario}
+              onChange={(e) => setSelectedScenario(e.target.value)}
+              className="block w-full py-3 px-4 border border-gray-700 bg-gray-800 rounded-lg shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 text-white text-base appearance-none"
+              style={{
+                // Custom arrow style for dark mode
+                backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\")",
+                backgroundRepeat: "no-repeat",
+                backgroundPosition: "right 0.7rem center",
+                backgroundSize: "1.5em 1.5em",
+              }}
+            >
+              {SCENARIOS.map((scenario) => (
+                <option key={scenario} value={scenario}>
+                  {scenario}
+                </option>
+              ))}
+            </select>
+          </div>
+          {/* End Feature 2 UI */}
 
           <button
             onClick={handleStart}
@@ -207,7 +247,7 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse"></div>
             <span className="text-gray-300 font-medium">
-              Small Talk Trainer
+              Small Talk Trainer - Scenario: {selectedScenario}
             </span>
           </div>
           <button
