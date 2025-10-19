@@ -8,6 +8,7 @@ import { synthesizeSpeech } from '../services/elevenlabs.service.js';
 console.log('Environment check:');
 console.log('GEMINI_API_KEY exists:', !!process.env.GEMINI_API_KEY);
 console.log('ELEVENLABS_API_KEY exists:', !!process.env.ELEVENLABS_API_KEY);
+console.log('STAGE exists:', process.env.STAGE);
 
 // Note: Gemini and ElevenLabs calls are handled by services in /services
 
@@ -69,6 +70,7 @@ export const processMessage = async (req, res) => {
           console.warn('Gemini service failed, falling back to mock response:', err.message);
           aiResponse = 'mock response';
         }
+        break;
       case 'dev':
         // Mock response generation
         console.log('🤖 Generating mock response...');
@@ -85,7 +87,7 @@ export const processMessage = async (req, res) => {
     // Use ElevenLabs service to synthesize speech (returns Buffer)
     let audioBuffer = null;
     switch (process.env.STAGE) {
-      case 'dev':
+      case 'prod':
         try {
           audioBuffer = await synthesizeSpeech(aiResponse);
           console.log('🎵 Audio buffer generated from ElevenLabs service');
@@ -102,6 +104,7 @@ export const processMessage = async (req, res) => {
             console.warn('Server playback failed:', err.message);
           }
         }
+        break;
       case 'dev':
         break;
     }
