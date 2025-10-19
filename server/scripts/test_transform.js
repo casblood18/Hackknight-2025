@@ -1,20 +1,8 @@
 import { transformGeminiOutput } from '../controllers/feedback.controller.js';
 
 // Mock Gemini-style output resembling the example and including explicit (highlight) markers
-const feedbackText = `user: (highlight)I dunno(highlight). Something… quiet.
-ai: Hmm, quiet. Maybe some cozy fiction or poetry? We just got a shipment of small-town mystery novels — really calm reads.
-
-user: I don’t really read much.
-ai: That’s okay! Maybe we can find something that’ll make you want to. Do you like short stories? They’re less of a commitment.
-
-user: (highlight)I guess(highlight).
-ai: Nice. [hands over a book] This one’s a collection of short stories about people who talk to strangers and accidentally make friends. It’s light but surprisingly sweet.
-
-----
-
-feedback 1: Avoid non-committal phrases like "I dunno"; be more specific to help the ai assist you better.
-
-feedback 2: Avoid non-committal phrases like "I guess"; be more decisive to guide the conversation.`;
+const feedbackText = `user: (…hi). ai: Hi there! Welcome in. How’s your morning going so far? user: Uh, fine. I just… want something to eat. ai: Of course! We’ve got plenty of good stuff today — fresh croissants, muffins, and some savory pastries. Anything you’re in the mood for? user: (I don’t know). Bread? ai: Bread’s always a solid choice. We’ve got sourdough, baguettes, and a soft milk bread that’s really popular. Want me to grab you a sample? user: (…sure). ai: [smiles] Here you go — it’s still warm. Most people say it reminds them of a cozy breakfast. user: Mm. Yeah, it’s good. ai: Glad you like it! Do you usually come by bakeries, or just wandered in today? user: Uh… I was walking. Needed something. ai: Gotcha. Sometimes a quick snack break helps reset the day. Want to try one of our croissants too? The chocolate ones are a hit. user: Maybe. (I don’t… usually know what to order). ai: No worries! How about I make it easy — would you prefer something sweet or something savory? user: Savory, (I guess). ai: Perfect. Our spinach and feta pastry is warm and buttery — I can pack one up for you. user: (Okay). ai: Great choice. And hey, no rush — it’s a chill place here. You can sit down if you want; I’ll bring it to your table. user: Thanks… (I don’t really talk much, sorry). ai: That’s totally fine! You’re doing great. Everyone starts the day differently — sometimes quiet mornings are the best ones. user: …yeah. Maybe. (Thanks for not being weird about it). ai: Not at all! I’m just glad you stopped by. Who knows — maybe next time you’ll tell me your favorite pastry.
+feedback: Be more direct and confident when starting a conversation. feedback: Avoid using phrases like "I don't know" when asked for a preference; provide a clearer direction. feedback: Avoid non-committal responses like "sure" to keep the conversation flowing efficiently. feedback: State your needs or preferences clearly rather than stating what you "don't usually know". feedback: Be more decisive; avoid non-committal phrases like "I guess" when making a choice. feedback: Acknowledge the offer clearly rather than using a simple "Okay". feedback: Avoid apologizing for your communication style; it's unnecessary in this context. feedback: Phrase thanks more directly and avoid judging the ai's behavior by saying "not being weird about it".`;
 
 const result = transformGeminiOutput(feedbackText);
 console.log(JSON.stringify(result, null, 2));

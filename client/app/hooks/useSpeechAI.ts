@@ -25,7 +25,14 @@ interface UseSpeechAIReturn {
   error: string | null;
 }
 
+<<<<<<< HEAD
 export function useSpeechAI(sessionId: string = "default"): UseSpeechAIReturn {
+=======
+export function useSpeechAI(
+  sessionId: string = "default",
+  currentScenario: string = "casual"
+): UseSpeechAIReturn {
+>>>>>>> main
   const [messages, setMessages] = useState<Message[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -182,7 +189,7 @@ export async function getFeedbackAnalysis(
   sessionId: string
 ): Promise<FeedbackResponse> {
   try {
-    const response = await fetch("http://localhost:5001/feedback", {
+    const response = await fetch("http://localhost:5001/api/feedback", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -193,6 +200,8 @@ export async function getFeedbackAnalysis(
       }),
     });
 
+    console.log("RESPONSE", response);
+
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(
@@ -201,9 +210,23 @@ export async function getFeedbackAnalysis(
     }
 
     const data = await response.json();
+    console.log("FEEDBACK DATA RECEIVED:", data);
+    console.log("Messages:", data.messages);
+    console.log("Highlights:", data.highlights);
+
+    // Transform backend messages to include id and timestamp
+    const annotatedMessages = (data.messages || []).map(
+      (msg: any, idx: number) => ({
+        id: msg.id || `feedback-msg-${idx}`,
+        text: msg.text,
+        sender: msg.sender,
+        timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
+      })
+    );
+
     return {
-      annotatedMessages: data.annotatedMessages || [],
-      feedbackMap: data.feedbackMap || {},
+      annotatedMessages,
+      feedbackMap: data.highlights || {},
     };
   } catch (error) {
     console.error("Error getting feedback analysis:", error);
