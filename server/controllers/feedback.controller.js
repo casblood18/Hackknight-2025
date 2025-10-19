@@ -82,6 +82,7 @@ Rules:
 - Preserve the original content; do not paraphrase user messages inside the feedback beyond what is necessary for the highlight.
 - We want the original input, but with highlights marked and feedback provided separately below the '----' we also added for the output.
 - DO NOT USE SEMICOLON OUTSIDE OF "ai:", "user:", and "feedback:"
+- Do not use emojis.
 Now analyze the transcript provided after this instruction and produce the output in the requested exact format.`;
 
   const prompt = `${preprompt}\n\nTranscript:\n${transcript}`;

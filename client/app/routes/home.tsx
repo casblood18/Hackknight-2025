@@ -40,14 +40,10 @@ export default function Home() {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const isActiveRef = useRef<boolean>(false);
   const sessionIdRef = useRef<string>("session-" + Date.now()); // Store sessionId
+  const finalTranscriptTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const {
-    messages,
-    isProcessing,
-    sendMessage,
-    clearConversation,
-    error,
-  } = useSpeechAI(sessionIdRef.current, selectedScenario);
+  const { messages, isProcessing, sendMessage, clearConversation, error } =
+    useSpeechAI(sessionIdRef.current, selectedScenario);
 
   // Initialize speech recognition
   useEffect(() => {
@@ -63,8 +59,8 @@ export default function Home() {
         recognition.lang = "en-US";
 
         recognition.onresult = (event: any) => {
-          // Ignore results if conversation has ended
-          if (!isActiveRef.current) {
+          // Ignore results if conversation has ended or AI is responding
+          if (!isActiveRef.current || isProcessing || isAiSpeaking) {
             return;
           }
 
@@ -83,9 +79,22 @@ export default function Home() {
           }
 
           if (finalTranscript) {
-            setCurrentTranscript("");
-            // Send to AI
-            sendMessage(finalTranscript.trim()).catch(console.error);
+            // Clear any existing timer
+            if (finalTranscriptTimerRef.current) {
+              clearTimeout(finalTranscriptTimerRef.current);
+            }
+
+            // Show the final transcript immediately
+            const textToSend = finalTranscript.trim();
+            setCurrentTranscript(textToSend);
+
+            // Wait 0.5 seconds before sending to give user time to continue
+            finalTranscriptTimerRef.current = setTimeout(() => {
+              console.log("⏱️ Sending after delay:", textToSend);
+              setCurrentTranscript("");
+              sendMessage(textToSend).catch(console.error);
+              finalTranscriptTimerRef.current = null;
+            }, 500);
           } else {
             setCurrentTranscript(interimTranscript);
           }
@@ -96,15 +105,71 @@ export default function Home() {
         };
 
         recognition.onend = () => {
-          if (isListening) {
-            recognition.start();
+          // Only restart if we're supposed to be listening AND AI is not responding
+          if (
+            isListening &&
+            !isProcessing &&
+            !isAiSpeaking &&
+            isActiveRef.current
+          ) {
+            console.log("🔄 Recognition ended, restarting...");
+            try {
+              recognition.start();
+            } catch (err) {
+              console.error("Error restarting recognition:", err);
+            }
+          } else {
+            console.log(
+              "⏸️ Recognition ended, not restarting (AI responding or not listening)"
+            );
           }
         };
 
         recognitionRef.current = recognition;
       }
     }
-  }, [isStarted, selectedScenario, isListening]);
+  }, [isStarted, selectedScenario]);
+
+  // Stop recognition when AI is processing or speaking, restart when done
+  useEffect(() => {
+    if (!recognitionRef.current || !isStarted || !isActiveRef.current) return;
+
+    if (isProcessing || isAiSpeaking) {
+      // Clear any pending transcript timer when AI starts responding
+      if (finalTranscriptTimerRef.current) {
+        clearTimeout(finalTranscriptTimerRef.current);
+        finalTranscriptTimerRef.current = null;
+      }
+
+      // AI is responding - stop listening (only if currently listening)
+      if (isListening) {
+        console.log("🛑 Stopping recognition - AI is responding");
+        try {
+          recognitionRef.current.stop();
+          setIsListening(false);
+          setCurrentTranscript(""); // Clear any interim transcript
+        } catch (err) {
+          console.error("Error stopping recognition:", err);
+        }
+      }
+    } else if (!isListening) {
+      // AI finished responding - restart listening
+      // Add a small delay to ensure the previous stop has completed
+      const timeoutId = setTimeout(() => {
+        if (recognitionRef.current && isActiveRef.current && !isListening) {
+          console.log("🎤 Restarting recognition - AI finished");
+          try {
+            recognitionRef.current.start();
+            setIsListening(true);
+          } catch (err) {
+            console.error("Error restarting recognition:", err);
+          }
+        }
+      }, 100);
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isProcessing, isAiSpeaking, isStarted, isListening]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -149,6 +214,12 @@ export default function Home() {
   const handleEndConversation = () => {
     // Immediately mark as inactive to prevent any new messages
     isActiveRef.current = false;
+
+    // Clear any pending transcript timer
+    if (finalTranscriptTimerRef.current) {
+      clearTimeout(finalTranscriptTimerRef.current);
+      finalTranscriptTimerRef.current = null;
+    }
 
     // Stop speech recognition
     if (recognitionRef.current) {
@@ -560,7 +631,14 @@ export default function Home() {
 
       {/* Bottom Microphone Button */}
       <div className="absolute bottom-12 left-1/2 transform -translate-x-1/2 flex flex-col items-center">
-        <button className="w-20 h-20 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors flex items-center justify-center shadow-lg">
+        <button
+          className={`w-20 h-20 rounded-full transition-colors flex items-center justify-center shadow-lg ${
+            isProcessing || isAiSpeaking
+              ? "bg-red-600 cursor-not-allowed"
+              : "bg-gray-700 hover:bg-gray-600"
+          }`}
+          disabled={isProcessing || isAiSpeaking}
+        >
           <svg
             className="w-10 h-10 text-white"
             fill="currentColor"
@@ -570,10 +648,17 @@ export default function Home() {
             <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
           </svg>
         </button>
-        {isListening && (
-          <div className="mt-3 px-4 py-1 bg-gray-800 rounded-full">
-            <span className="text-gray-300 text-sm">
+        {isListening && !isProcessing && !isAiSpeaking && (
+          <div className="mt-3 px-4 py-1 bg-green-800 rounded-full">
+            <span className="text-green-300 text-sm">
               Listening... Speak now
+            </span>
+          </div>
+        )}
+        {(isProcessing || isAiSpeaking) && (
+          <div className="mt-3 px-4 py-1 bg-red-800 rounded-full">
+            <span className="text-red-300 text-sm">
+              AI is responding... Please wait
             </span>
           </div>
         )}

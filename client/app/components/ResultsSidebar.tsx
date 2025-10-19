@@ -1,10 +1,18 @@
 import { useEffect, useState } from "react";
+import type { Message } from "../hooks/useSpeechAI";
 
-export default function ResultsSidebar() {
-  const [activeTab, setActiveTab] =
-    useState<"home" | "results" | "feedback">("home");
+interface ResultsSidebarProps {
+  messages: Message[];
+}
 
-  const [summary, setSummary] = useState<{ good: string; bad: string } | null>(null);
+export default function ResultsSidebar({ messages }: ResultsSidebarProps) {
+  const [activeTab, setActiveTab] = useState<"home" | "results" | "feedback">(
+    "results"
+  );
+
+  const [summary, setSummary] = useState<{ good: string; bad: string } | null>(
+    null
+  );
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
 
   // Tab click handler (no routing)
@@ -14,28 +22,34 @@ export default function ResultsSidebar() {
 
   // summary data when results tab is active
   useEffect(() => {
-    if (activeTab === "results") {
+    if (activeTab === "results" && messages.length > 0) {
       setIsLoadingSummary(true);
 
-      // replace with your deployed backend URL when ready
-      fetch("http://localhost:5000/api/summary")
+      fetch("http://localhost:5001/api/summary", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ messages }),
+      })
         .then((res) => res.json())
         .then((data) => {
+          console.log("Summary data received:", data);
           setSummary({
-            good: data.summary_good,
-            bad: data.summary_bad,
+            good: data.good,
+            bad: data.bad,
           });
         })
         .catch((err) => console.error("Error fetching summary:", err))
         .finally(() => setIsLoadingSummary(false));
     }
-  }, [activeTab]);
+  }, [activeTab, messages]);
 
   /**
-   *  backend response shape:
+   * Backend response shape:
    * {
-   *   "summary_good": "You spoke clearly and kept the conversation friendly.",
-   *   "summary_bad": "You interrupted a few times and didn’t ask follow-up questions."
+   *   "good": "You spoke clearly and kept the conversation friendly.",
+   *   "bad": "You interrupted a few times and didn't ask follow-up questions."
    * }
    */
 
@@ -67,9 +81,18 @@ export default function ResultsSidebar() {
                           : "text-gray-300 hover:text-white"
                       }`}
         >
-          <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-              d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+          <svg
+            className="w-7 h-7"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+            />
           </svg>
         </button>
 
@@ -86,9 +109,18 @@ export default function ResultsSidebar() {
                           : "text-gray-300 hover:text-white"
                       }`}
         >
-          <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <svg
+            className="w-7 h-7"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
           </svg>
         </button>
 
@@ -105,9 +137,18 @@ export default function ResultsSidebar() {
                           : "text-gray-300 hover:text-white"
                       }`}
         >
-          <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          <svg
+            className="w-7 h-7"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+            />
           </svg>
         </button>
       </nav>
@@ -131,14 +172,33 @@ export default function ResultsSidebar() {
             <div className="relative flex flex-col items-center gap-5 z-10">
               {/* Logo */}
               <div className="logo-pop animate-float ring-pulse">
-                <div className="relative w-20 h-20 rounded-2xl bg-gray-800/70 border border-white/10
-                                flex items-center justify-center shadow-xl shadow-purple-500/25">
+                <div
+                  className="relative w-20 h-20 rounded-2xl bg-gray-800/70 border border-white/10
+                                flex items-center justify-center shadow-xl shadow-purple-500/25"
+                >
                   <svg className="w-10 h-10" viewBox="0 0 24 24">
-                    <path className="logo-stroke" fill="none" stroke="#E9D5FF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                      d="M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 0 1-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8zM8 12h.01M12 12h.01M16 12h.01" />
-                    <path className="logo-fill" fill="url(#grad)" d="M12 4c-5 0-9 3.582-9 8 0 1.574.512 3.042 1.395 4.28L3 20l4.745-.949A9.86 9.86 0 0 0 12 20c4.97 0 9-3.582 9-8s-4.03-8-9-8z" />
+                    <path
+                      className="logo-stroke"
+                      fill="none"
+                      stroke="#E9D5FF"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 0 1-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8zM8 12h.01M12 12h.01M16 12h.01"
+                    />
+                    <path
+                      className="logo-fill"
+                      fill="url(#grad)"
+                      d="M12 4c-5 0-9 3.582-9 8 0 1.574.512 3.042 1.395 4.28L3 20l4.745-.949A9.86 9.86 0 0 0 12 20c4.97 0 9-3.582 9-8s-4.03-8-9-8z"
+                    />
                     <defs>
-                      <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <linearGradient
+                        id="grad"
+                        x1="0%"
+                        y1="0%"
+                        x2="100%"
+                        y2="100%"
+                      >
                         <stop offset="0%" stopColor="#C4B5FD" />
                         <stop offset="50%" stopColor="#F472B6" />
                         <stop offset="100%" stopColor="#FB923C" />
@@ -147,8 +207,12 @@ export default function ResultsSidebar() {
                   </svg>
 
                   {/* Orbits + sparkles */}
-                  <div className="orbit orbit-1"><span className="satellite" /></div>
-                  <div className="orbit orbit-2"><span className="satellite" /></div>
+                  <div className="orbit orbit-1">
+                    <span className="satellite" />
+                  </div>
+                  <div className="orbit orbit-2">
+                    <span className="satellite" />
+                  </div>
                   <span className="sparkle s1" />
                   <span className="sparkle s2" />
                   <span className="sparkle s3" />
@@ -157,9 +221,14 @@ export default function ResultsSidebar() {
 
               {/* Title */}
               <div className="relative">
-                <h2 className="title-breathe text-5xl xl:text-6xl font-extrabold logo-pop" style={{ animationDelay: "140ms" }}>
-                  <span className="bg-gradient-to-r from-purple-300 via-pink-400 to-orange-400
-                                   bg-clip-text text-transparent text-shimmer">
+                <h2
+                  className="title-breathe text-5xl xl:text-6xl font-extrabold logo-pop"
+                  style={{ animationDelay: "140ms" }}
+                >
+                  <span
+                    className="bg-gradient-to-r from-purple-300 via-pink-400 to-orange-400
+                                   bg-clip-text text-transparent text-shimmer"
+                  >
                     Chit Chat
                   </span>
                 </h2>
@@ -200,7 +269,9 @@ export default function ResultsSidebar() {
                   </span>
                 </h2>
                 {isLoadingSummary ? (
-                  <p className="text-gray-500 italic animate-pulse">Generating summary...</p>
+                  <p className="text-gray-500 italic animate-pulse">
+                    Generating summary...
+                  </p>
                 ) : (
                   <p className="text-gray-400 leading-relaxed max-w-lg">
                     {summary?.good || "Waiting for feedback..."}
@@ -216,7 +287,9 @@ export default function ResultsSidebar() {
                   </span>
                 </h2>
                 {isLoadingSummary ? (
-                  <p className="text-gray-500 italic animate-pulse">Analyzing areas for improvement...</p>
+                  <p className="text-gray-500 italic animate-pulse">
+                    Analyzing areas for improvement...
+                  </p>
                 ) : (
                   <p className="text-gray-400 leading-relaxed max-w-lg">
                     {summary?.bad || "Waiting for feedback..."}
@@ -252,7 +325,9 @@ export default function ResultsSidebar() {
                     Ratings page coming soon…
                   </span>
                 </h2>
-                <p className="text-gray-400">We’re polishing the scoring &amp; insights experience.</p>
+                <p className="text-gray-400">
+                  We’re polishing the scoring &amp; insights experience.
+                </p>
               </div>
             </div>
           </div>
