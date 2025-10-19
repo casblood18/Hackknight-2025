@@ -39,47 +39,49 @@ export default function ResultsContent() {
       try {
         // TODO: Remove this mock data once backend is ready
         // MOCK DATA FOR TESTING - Simulates Gemini API response
-        await new Promise((resolve) => setTimeout(resolve, 2000)); // Simulate API delay
+        // await new Promise((resolve) => setTimeout(resolve, 2000)); // Simulate API delay
 
-        const mockFeedbackMap: FeedbackMap = {
-          ALIAS_1: [
-            "hello",
-            "Good greeting! Starting with 'hello' is a friendly and universal way to begin a conversation. However, you could make it more engaging by adding a follow-up question or comment about the context.",
-          ],
-          ALIAS_2: [
-            "how are you",
-            "This is a common courtesy question that shows interest. In professional settings, consider being more specific, like 'How has your day been?' or 'How's the project going?' to encourage deeper conversation.",
-          ],
-          ALIAS_3: [
-            "that's great",
-            "Positive response! While this acknowledges the other person, you could enhance engagement by asking a follow-up question or sharing a related thought to keep the conversation flowing naturally.",
-          ],
-        };
+        // const mockFeedbackMap: FeedbackMap = {
+        //   ALIAS_1: [
+        //     "hello",
+        //     "Good greeting! Starting with 'hello' is a friendly and universal way to begin a conversation. However, you could make it more engaging by adding a follow-up question or comment about the context.",
+        //   ],
+        //   ALIAS_2: [
+        //     "how are you",
+        //     "This is a common courtesy question that shows interest. In professional settings, consider being more specific, like 'How has your day been?' or 'How's the project going?' to encourage deeper conversation.",
+        //   ],
+        //   ALIAS_3: [
+        //     "that's great",
+        //     "Positive response! While this acknowledges the other person, you could enhance engagement by asking a follow-up question or sharing a related thought to keep the conversation flowing naturally.",
+        //   ],
+        // };
 
-        const mockAnnotatedMessages: Message[] = messages.map((msg, idx) => {
-          // Add some aliases to certain messages for demonstration
-          if (idx === 0 && msg.sender === "user") {
-            return {
-              ...msg,
-              text: "[ALIAS_1] there aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab",
-            };
-          }
-          if (idx === 2 && msg.sender === "user") {
-            return { ...msg, text: "I'm doing well, [ALIAS_2]?" };
-          }
-          if (idx === 4 && msg.sender === "user") {
-            return { ...msg, text: "[ALIAS_3], glad to hear that!" };
-          }
-          return msg;
-        });
+        // const mockAnnotatedMessages: Message[] = messages.map((msg, idx) => {
+        //   // Add some aliases to certain messages for demonstration
+        //   if (idx === 0 && msg.sender === "user") {
+        //     return {
+        //       ...msg,
+        //       text: "[ALIAS_1] there aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab",
+        //     };
+        //   }
+        //   if (idx === 2 && msg.sender === "user") {
+        //     return { ...msg, text: "I'm doing well, [ALIAS_2]?" };
+        //   }
+        //   if (idx === 4 && msg.sender === "user") {
+        //     return { ...msg, text: "[ALIAS_3], glad to hear that!" };
+        //   }
+        //   return msg;
+        // });
 
-        setAnnotatedMessages(mockAnnotatedMessages);
-        setFeedbackMap(mockFeedbackMap);
+        // setAnnotatedMessages(mockAnnotatedMessages);
+        // setFeedbackMap(mockFeedbackMap);
 
-        // Real API call (commented out for testing)
-        // const feedback = await getFeedbackAnalysis(messages, sessionId);
-        // setAnnotatedMessages(feedback.annotatedMessages);
-        // setFeedbackMap(feedback.feedbackMap);
+        // Real API call
+        const feedback = await getFeedbackAnalysis(messages, sessionId);
+        console.log("Setting annotatedMessages:", feedback.annotatedMessages);
+        console.log("Setting feedbackMap:", feedback.feedbackMap);
+        setAnnotatedMessages(feedback.annotatedMessages);
+        setFeedbackMap(feedback.feedbackMap);
       } catch (err) {
         console.error("Failed to fetch feedback:", err);
         setError(
@@ -106,11 +108,11 @@ export default function ResultsContent() {
 
   // Parse text with aliases and make them clickable
   const renderMessageText = (text: string, messageIndex: number) => {
-    // Match text in brackets like [ALIAS_1]
-    const parts = text.split(/(\[[\w_]+\])/g);
+    // Match text in parentheses like (highlighted1)
+    const parts = text.split(/(\(highlighted\d+\))/g);
 
     return parts.map((part, index) => {
-      const aliasMatch = part.match(/\[([\w_]+)\]/);
+      const aliasMatch = part.match(/(\(highlighted\d+\))/);
       if (aliasMatch && feedbackMap[aliasMatch[1]]) {
         const alias = aliasMatch[1];
         const [originalText] = feedbackMap[alias];
