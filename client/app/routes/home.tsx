@@ -1,5 +1,6 @@
 import type { Route } from "./+types/home";
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router";
 import { useSpeechAI } from "../hooks/useSpeechAI";
 
 // Feature 2: Define available scenarios
@@ -29,6 +30,7 @@ interface Message {
 }
 
 export default function Home() {
+  const navigate = useNavigate();
   const [isStarted, setIsStarted] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [currentTranscript, setCurrentTranscript] = useState("");
@@ -169,6 +171,9 @@ export default function Home() {
     setCurrentTranscript("");
     setIsAiSpeaking(false);
     clearConversation().catch(console.error);
+
+    // Navigate to results page
+    navigate("/results");
   };
 
   if (!isStarted) {
