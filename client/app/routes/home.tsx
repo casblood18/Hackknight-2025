@@ -44,8 +44,8 @@ export default function Home() {
     sendMessage,
     setScenario,
     clearConversation,
-    error
-  } = useSpeechAI('session-' + Date.now());
+    error,
+  } = useSpeechAI("session-" + Date.now());
 
   // Initialize speech recognition
   useEffect(() => {
@@ -72,10 +72,10 @@ export default function Home() {
           for (let i = event.resultIndex; i < event.results.length; i++) {
             const transcript = event.results[i][0].transcript;
             if (event.results[i].isFinal) {
-              console.log('✨ Final transcript:', transcript);
+              console.log("✨ Final transcript:", transcript);
               finalTranscript += transcript + " ";
             } else {
-              console.log('🔄 Interim transcript:', transcript);
+              console.log("🔄 Interim transcript:", transcript);
               interimTranscript += transcript;
             }
           }
@@ -141,7 +141,7 @@ export default function Home() {
     setIsStarted(true);
     setTimeout(() => {
       if (recognitionRef.current) {
-        console.log('🎤 Starting speech recognition');
+        console.log("🎤 Starting speech recognition");
         recognitionRef.current.start();
         setIsListening(true);
       }
@@ -188,7 +188,10 @@ export default function Home() {
 
           {/* Feature 2: Scenario Selector UI */}
           <div className="mb-10 max-w-xs mx-auto">
-            <label htmlFor="scenario-select" className="block text-lg font-medium text-gray-400 mb-2 text-left">
+            <label
+              htmlFor="scenario-select"
+              className="block text-lg font-medium text-gray-400 mb-2 text-left"
+            >
               Pick a Conversation Scenario:
             </label>
             <select
@@ -198,7 +201,8 @@ export default function Home() {
               className="block w-full py-3 px-4 border border-gray-700 bg-gray-800 rounded-lg shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 text-white text-base appearance-none"
               style={{
                 // Custom arrow style for dark mode
-                backgroundImage: "url(\"data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\")",
+                backgroundImage:
+                  "url(\"data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\")",
                 backgroundRepeat: "no-repeat",
                 backgroundPosition: "right 0.7rem center",
                 backgroundSize: "1.5em 1.5em",
@@ -240,108 +244,148 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 flex flex-col">
+    <div className="min-h-screen bg-[#0a1628] flex flex-col">
       {/* Header */}
-      <div className="border-b border-gray-800 bg-gray-900/50 backdrop-blur-sm">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse"></div>
-            <span className="text-gray-300 font-medium">
-              Small Talk Trainer - Scenario: {selectedScenario}
-            </span>
+      <div className="px-6 py-4 flex justify-between items-center">
+        <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+          SmallTalk Trainer
+        </h1>
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2">
+            <span className="text-yellow-500">🎓</span>
+            <span className="text-white font-medium">{selectedScenario}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-green-500"></div>
+            <span className="text-white font-medium">Simulation Active</span>
           </div>
           <button
             onClick={handleEndConversation}
-            className="px-6 py-2 text-sm font-medium text-white rounded-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 transition-all duration-300 shadow-lg shadow-red-500/30 hover:shadow-red-500/50"
+            className="px-6 py-2 text-sm font-semibold text-white rounded-md bg-red-600 hover:bg-red-700 transition-colors"
           >
-            End Conversation
+            End Training
           </button>
         </div>
       </div>
 
-      {/* Chat Container */}
-      <div className="flex-1 overflow-y-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto space-y-6">
-          {messages.length === 0 && !currentTranscript && (
-            <div className="text-center py-12">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-500/20 mb-4">
-                <svg
-                  className="w-8 h-8 text-purple-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-                  />
-                </svg>
-              </div>
-              <p className="text-gray-400 text-lg">
-                Start speaking to begin your conversation...
-              </p>
-            </div>
-          )}
-
-          {messages.map((message, index) => (
-            <div
-              key={index}
-              className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
-            >
-              <div
-                className={`max-w-[75%] px-6 py-4 rounded-2xl ${
-                  message.sender === "user"
-                    ? "bg-gradient-to-r from-purple-600 to-purple-700 text-white"
-                    : "bg-gray-800 text-gray-100 border border-gray-700"
-                }`}
+      {/* Main Split Layout */}
+      <div className="flex-1 flex relative">
+        {/* Left Side - You */}
+        <div className="flex-1 flex flex-col items-center px-8 py-12">
+          {/* User Icon and Label */}
+          <div className="flex flex-col items-center mb-8">
+            <div className="w-20 h-20 rounded-full border-4 border-white/30 flex items-center justify-center mb-3">
+              <svg
+                className="w-10 h-10 text-white"
+                fill="currentColor"
+                viewBox="0 0 24 24"
               >
-                <p className="text-base leading-relaxed">{message.text}</p>
-              </div>
+                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+              </svg>
             </div>
-          ))}
+            <span className="text-white text-xl font-semibold">You</span>
+          </div>
 
-          {currentTranscript && (
-            <div className="flex justify-end">
-              <div className="max-w-[75%] px-6 py-4 rounded-2xl bg-gradient-to-r from-purple-600/60 to-purple-700/60 text-white border border-purple-500/30">
-                <p className="text-base leading-relaxed opacity-80">
-                  {currentTranscript}
-                </p>
-              </div>
-            </div>
-          )}
+          {/* User Messages */}
+          <div className="w-full max-w-md space-y-4">
+            {messages
+              .filter((m) => m.sender === "user")
+              .map((message, index) => (
+                <div key={index} className="flex flex-col items-start">
+                  <div className="bg-transparent border-2 border-white/30 rounded-xl px-4 py-3">
+                    <div className="text-white/70 text-xs font-semibold mb-1">
+                      YOU
+                    </div>
+                    <div className="text-white">{message.text}</div>
+                  </div>
+                </div>
+              ))}
 
-          {isAiSpeaking && (
-            <div className="flex justify-start">
-              <div className="px-6 py-4 rounded-2xl bg-gray-800 border border-gray-700">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></div>
-                  <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse delay-75"></div>
-                  <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse delay-150"></div>
+            {currentTranscript && (
+              <div className="flex flex-col items-start">
+                <div className="bg-transparent border-2 border-white/30 rounded-xl px-4 py-3">
+                  <div className="text-white/70 text-xs font-semibold mb-1">
+                    YOU
+                  </div>
+                  <div className="text-white opacity-70">
+                    {currentTranscript}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-
-          <div ref={messagesEndRef} />
-        </div>
-      </div>
-
-      {/* Status Bar */}
-      <div className="border-t border-gray-800 bg-gray-900/50 backdrop-blur-sm">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-center gap-3 text-sm">
-            {isListening && (
-              <>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-                  <span className="text-gray-400">Listening...</span>
-                </div>
-              </>
             )}
           </div>
         </div>
+
+        {/* Center Divider */}
+        <div className="w-px bg-white/10"></div>
+
+        {/* Right Side - Trainer AI */}
+        <div className="flex-1 flex flex-col items-center px-8 py-12">
+          {/* AI Icon and Label */}
+          <div className="flex flex-col items-center mb-8">
+            <div className="w-20 h-20 rounded-full border-4 border-white/30 flex items-center justify-center mb-3">
+              <svg
+                className="w-10 h-10 text-white"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" />
+              </svg>
+            </div>
+            <span className="text-white text-xl font-semibold">Trainer AI</span>
+          </div>
+
+          {/* AI Messages */}
+          <div className="w-full max-w-md space-y-4">
+            {messages
+              .filter((m) => m.sender === "ai")
+              .map((message, index) => (
+                <div key={index} className="flex flex-col items-start">
+                  <div className="bg-transparent border-2 border-white/30 rounded-xl px-4 py-3">
+                    <div className="text-white/70 text-xs font-semibold mb-1">
+                      TRAINER AI
+                    </div>
+                    <div className="text-white">{message.text}</div>
+                  </div>
+                </div>
+              ))}
+
+            {isAiSpeaking && (
+              <div className="flex flex-col items-start">
+                <div className="bg-transparent border-2 border-white/30 rounded-xl px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-white animate-pulse"></div>
+                    <div className="w-2 h-2 rounded-full bg-white animate-pulse delay-75"></div>
+                    <div className="w-2 h-2 rounded-full bg-white animate-pulse delay-150"></div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Bottom Microphone Button */}
+      <div className="absolute bottom-12 left-1/2 transform -translate-x-1/2 flex flex-col items-center">
+        <button className="w-20 h-20 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors flex items-center justify-center shadow-lg">
+          <svg
+            className="w-10 h-10 text-white"
+            fill="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+            <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
+          </svg>
+        </button>
+        {isListening && (
+          <div className="mt-3 px-4 py-1 bg-gray-800 rounded-full">
+            <span className="text-gray-300 text-sm">
+              Listening... Speak now
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
