@@ -25,14 +25,10 @@ interface UseSpeechAIReturn {
   error: string | null;
 }
 
-<<<<<<< HEAD
-export function useSpeechAI(sessionId: string = "default"): UseSpeechAIReturn {
-=======
 export function useSpeechAI(
   sessionId: string = "default",
   currentScenario: string = "casual"
 ): UseSpeechAIReturn {
->>>>>>> main
   const [messages, setMessages] = useState<Message[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -209,22 +205,20 @@ export async function getFeedbackAnalysis(
       );
     }
 
-    const data = await response.json();
-    console.log("FEEDBACK DATA RECEIVED:", data);
-    console.log("Messages:", data.messages);
-    console.log("Highlights:", data.highlights);
+      const data = await response.json();
+      console.log("FEEDBACK DATA RECEIVED:", data);
+      console.log("Messages:", data.messages);
+      console.log("Highlights:", data.highlights);
 
-    // Transform backend messages to include id and timestamp
-    const annotatedMessages = (data.messages || []).map(
-      (msg: any, idx: number) => ({
-        id: msg.id || `feedback-msg-${idx}`,
-        text: msg.text,
-        sender: msg.sender,
-        timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
-      })
-    );
-
-    return {
+      // Keep original messages but annotate them with the feedback from backend
+      const annotatedMessages = messages.map(msg => {
+        // Find corresponding message from backend feedback
+        const backendMsg = data.messages.find((m: { text: string; sender: string }) => m.text === msg.text && m.sender === msg.sender);
+        return {
+          ...msg,
+          text: backendMsg?.text || msg.text, // Use backend text if available (it might have highlights)
+        };
+      });    return {
       annotatedMessages,
       feedbackMap: data.highlights || {},
     };

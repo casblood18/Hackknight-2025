@@ -10,6 +10,8 @@ const SCENARIOS = [
   "Dating",
   "Networking Event",
   "Customer Support",
+  "Ordering a sandwich",
+  "Running into an old classmate at the mall",
 ];
 
 export function meta({}: Route.MetaArgs) {
@@ -131,14 +133,29 @@ export default function Home() {
     }
   };
 
-  const handleStart = () => {
+  const handleStart = async () => {
     // Feature 1: Clear all state for a fresh session
     setCurrentTranscript("");
-    startConversation(selectedScenario);
     setIsAiSpeaking(false);
 
     isActiveRef.current = true;
     setIsStarted(true);
+
+    // Wait for the conversation to start and get AI's first message
+    try {
+      await startConversation(selectedScenario);
+      // Wait a moment for the messages state to update
+      await new Promise(resolve => setTimeout(resolve, 100));
+      // The latest message should be from AI - let's speak it
+      const latestMessage = messages[messages.length - 1];
+      if (latestMessage?.sender === 'ai') {
+        speakText(latestMessage.text);
+      }
+    } catch (error) {
+      console.error("Error starting conversation:", error);
+    }
+
+    // Start listening after processing AI's response
     setTimeout(() => {
       if (recognitionRef.current) {
         console.log("🎤 Starting speech recognition");
@@ -199,57 +216,11 @@ export default function Home() {
               conversations.
             </p>
 
-<<<<<<< HEAD
-          {/* Feature 2: Scenario Selector UI */}
-          <div className="mb-10 max-w-xs mx-auto">
-            <label
-              htmlFor="scenario-select"
-              className="block text-lg font-medium text-gray-400 mb-2 text-left"
-            >
-              Pick a Conversation Scenario:
-            </label>
-            <select
-              id="scenario-select"
-              value={selectedScenario}
-              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                setSelectedScenario(e.target.value)
-              }
-              className="block w-full py-3 px-4 border border-gray-700 bg-gray-800 rounded-lg shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 text-white text-base appearance-none"
-              style={{
-                // Custom arrow style for dark mode
-                backgroundImage:
-                  "url(\"data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\")",
-                backgroundRepeat: "no-repeat",
-                backgroundPosition: "right 0.7rem center",
-                backgroundSize: "1.5em 1.5em",
-              }}
-            >
-              {SCENARIOS.map((scenario) => (
-                <option key={scenario} value={scenario}>
-                  {scenario}
-                </option>
-              ))}
-            </select>
-          </div>
-          {/* End Feature 2 UI */}
-
-          <button
-            onClick={handleStart}
-            className="group relative px-12 py-5 text-lg font-semibold text-white rounded-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 transition-all duration-300 shadow-lg shadow-purple-500/50 hover:shadow-xl hover:shadow-purple-500/60 hover:scale-105"
-          >
-            <span className="flex items-center gap-3">
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-=======
             {/* Feature 2: Scenario Selector UI */}
             <div className="mb-10 max-w-xs mx-auto">
               <label
                 htmlFor="scenario-select"
                 className="block text-lg font-medium text-gray-400 mb-2 text-center"
->>>>>>> main
               >
                 Pick a Conversation Scenario:
               </label>
