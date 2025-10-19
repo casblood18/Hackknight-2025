@@ -20,15 +20,15 @@ interface UseSpeechAIReturn {
   messages: Message[];
   isProcessing: boolean;
   sendMessage: (text: string) => Promise<void>;
-  setScenario: (scenario: string) => Promise<void>;
   clearConversation: () => Promise<void>;
   error: string | null;
 }
 
-export function useSpeechAI(sessionId: string = "default"): UseSpeechAIReturn {
+export function useSpeechAI(sessionId: string = "default", currentScenario: string = "casual"): UseSpeechAIReturn {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  let selectedScenario = useState<string | null>(null);
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -62,6 +62,7 @@ export function useSpeechAI(sessionId: string = "default"): UseSpeechAIReturn {
             body: JSON.stringify({
               message: text,
               sessionId,
+              scenario: currentScenario,
             }),
           }
         );
@@ -104,34 +105,6 @@ export function useSpeechAI(sessionId: string = "default"): UseSpeechAIReturn {
     [sessionId]
   );
 
-  const setScenario = useCallback(
-    async (scenario: string) => {
-      try {
-        setError(null);
-        const response = await fetch(
-          "http://localhost:5001/api/speech/scenario",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              sessionId,
-              scenario,
-            }),
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to set scenario");
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to set scenario");
-      }
-    },
-    [sessionId]
-  );
-
   const clearConversation = useCallback(async () => {
     try {
       setError(null);
@@ -154,7 +127,6 @@ export function useSpeechAI(sessionId: string = "default"): UseSpeechAIReturn {
     messages,
     isProcessing,
     sendMessage,
-    setScenario,
     clearConversation,
     error,
   };
