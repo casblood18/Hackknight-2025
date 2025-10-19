@@ -60,19 +60,23 @@ export const processMessage = async (req, res) => {
       Keep responses concise but engaging.
     `;
 
-    // GEMINI PROMPTING API CODE (commented out)
-    /*
-    console.log('🤖 Sending request to Gemini...');
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-    const result = await model.generateContent(prompt);
-    const aiResponse = result.response.text();
-    console.log('✨ Gemini response:', aiResponse);
-    */
+    let aiResponse = "";
+    // GEMINI PROMPTING API CODE
+    switch (process.env.STAGE) {
+      case 'prod':
+        console.log('🤖 Sending request to Gemini...');
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+        const result = await model.generateContent(prompt);
+        aiResponse = result.response.text();
+        console.log('✨ Gemini response:', aiResponse);
+        break;
 
-    // Mock response generation
-    console.log('🤖 Generating mock response...');
-    let aiResponse = 'mock response';
-        
+      case 'dev':
+        // Mock response generation
+        console.log('🤖 Generating mock response...');
+        aiResponse = 'mock response';
+        break;    
+    }
     console.log('✨ Mock response generated:', aiResponse);
 
     // Add AI response to history
@@ -81,43 +85,32 @@ export const processMessage = async (req, res) => {
       content: aiResponse
     });
 
-    // REAL API CODE (commented out)
-    console.log('🔊 Converting to speech with ElevenLabs...');
-    const audio = await elevenlabs.textToSpeech.convert(
-      "21m00Tcm4TlvDq8ikWAM", // Default voice ID
-      {
-        text: aiResponse,
-        modelId: "eleven_multilingual_v2",
-        outputFormat: "mp3_44100_128",
-      }
-    );
-    console.log('🎵 Audio stream received from ElevenLabs');
+    // ELEVENLABS API CODE
+    switch (process.env.STAGE) {
+      case 'prod':
+        console.log('🔊 Converting to speech with ElevenLabs...');
+        const audio = await elevenlabs.textToSpeech.convert(
+          "21m00Tcm4TlvDq8ikWAM", // Default voice ID
+          {
+            text: aiResponse,
+            modelId: "eleven_multilingual_v2",
+            outputFormat: "mp3_44100_128",
+          }
+        );
+        console.log('🎵 Audio stream received from ElevenLabs');
 
+        try{ play(audio); } 
+        catch (err) { throw(err); }
 
-    // Convert stream to buffer
-    // const chunks = [];
-    // const reader = audioStream.getReader();
-    // while (true) {
-    //   const { done, value } = await reader.read();
-    //   if (done) break;
-    //   chunks.push(value);
-    // }
-    // const audioBuffer = Buffer.concat(chunks);
-    
-
-    // Mock audio generation
-    // console.log('🔊 Mocking audio response...');
-    // const audioBuffer = null; // Mock empty audio buffer
-    try{
-        play(audio);
-    } catch (err) {
-        throw(err);
+        break;
+      
+      case 'dev':
+        break;
     }
 
     // Send response
     res.json({
       text: aiResponse,
-    //   audio: audio,
       scenario: conversation.scenario,
       history: conversation.messages
     });
