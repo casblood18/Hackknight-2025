@@ -45,9 +45,10 @@ export default function Home() {
     messages,
     isProcessing,
     sendMessage,
+    startConversation,
     clearConversation,
     error,
-  } = useSpeechAI(sessionIdRef.current, selectedScenario);
+  } = useSpeechAI(sessionIdRef.current);
 
   // Initialize speech recognition
   useEffect(() => {
@@ -85,7 +86,7 @@ export default function Home() {
           if (finalTranscript) {
             setCurrentTranscript("");
             // Send to AI
-            sendMessage(finalTranscript.trim()).catch(console.error);
+            sendMessage(finalTranscript.trim(), selectedScenario).catch(console.error);
           } else {
             setCurrentTranscript(interimTranscript);
           }
@@ -130,6 +131,7 @@ export default function Home() {
   const handleStart = () => {
     // Feature 1: Clear all state for a fresh session
     setCurrentTranscript("");
+    startConversation(selectedScenario);
     setIsAiSpeaking(false);
 
     isActiveRef.current = true;
@@ -202,7 +204,9 @@ export default function Home() {
             <select
               id="scenario-select"
               value={selectedScenario}
-              onChange={(e) => setSelectedScenario(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                setSelectedScenario(e.target.value)
+              }
               className="block w-full py-3 px-4 border border-gray-700 bg-gray-800 rounded-lg shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 text-white text-base appearance-none"
               style={{
                 // Custom arrow style for dark mode
