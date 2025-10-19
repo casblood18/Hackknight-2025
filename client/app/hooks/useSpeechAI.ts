@@ -67,7 +67,7 @@ export function useSpeechAI(sessionId: string = "default"): UseSpeechAIReturn {
         );
 
         if (!response.ok) {
-          const errorText = await response.text();
+          const errorText = await response;
           console.error("📛 Server error details:", errorText);
           throw new Error(`Server error ${response.status}: ${errorText}`);
         }
