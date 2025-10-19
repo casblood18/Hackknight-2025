@@ -19,7 +19,11 @@ export default function ResultsContent() {
   const [annotatedMessages, setAnnotatedMessages] = useState<Message[]>([]);
   const [feedbackMap, setFeedbackMap] = useState<FeedbackMap>({});
   const [isLoadingFeedback, setIsLoadingFeedback] = useState(false);
-  const [selectedAlias, setSelectedAlias] = useState<string | null>(null);
+  const [selectedFeedback, setSelectedFeedback] = useState<{
+    messageIndex: number;
+    alias: string;
+  } | null>(null);
+  const [isClosingFeedback, setIsClosingFeedback] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Fetch feedback analysis when component mounts
@@ -91,8 +95,17 @@ export default function ResultsContent() {
     fetchFeedback();
   }, [messages, sessionId]);
 
+  // Handle closing feedback with animation
+  const handleCloseFeedback = () => {
+    setIsClosingFeedback(true);
+    setTimeout(() => {
+      setSelectedFeedback(null);
+      setIsClosingFeedback(false);
+    }, 200); // Match animation duration
+  };
+
   // Parse text with aliases and make them clickable
-  const renderMessageText = (text: string) => {
+  const renderMessageText = (text: string, messageIndex: number) => {
     // Match text in brackets like [ALIAS_1]
     const parts = text.split(/(\[[\w_]+\])/g);
 
@@ -105,7 +118,17 @@ export default function ResultsContent() {
         return (
           <span
             key={index}
-            onClick={() => setSelectedAlias(alias)}
+            onClick={() => {
+              // Toggle feedback: close if same, open if different
+              if (
+                selectedFeedback?.messageIndex === messageIndex &&
+                selectedFeedback?.alias === alias
+              ) {
+                setSelectedFeedback(null);
+              } else {
+                setSelectedFeedback({ messageIndex, alias });
+              }
+            }}
             className="cursor-pointer bg-purple-500/40 hover:bg-purple-500/60 border-b-2 border-purple-400 px-1 rounded transition-colors"
             title="Click to see feedback"
           >
@@ -140,34 +163,54 @@ export default function ResultsContent() {
         {!isLoadingFeedback && annotatedMessages.length > 0 && (
           <div className="flex-1 overflow-hidden flex flex-col">
             {/* Scrollable conversation container */}
-            <div className="flex-1 overflow-y-auto space-y-6 pr-2 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto space-y-6 pr-6 custom-scrollbar">
               {annotatedMessages.map((message, index) => (
-                <div
-                  key={message.id || index}
-                  className="flex gap-6 items-center message-pop"
-                  style={{ animationDelay: `${index * 0.1}s` }}
-                >
+                <div key={message.id || index} className="space-y-4">
                   <div
-                    className={`text-lg font-semibold min-w-[100px] ${
-                      message.sender === "user"
-                        ? "text-pink-400"
-                        : "text-cyan-400"
-                    }`}
+                    className="flex gap-6 items-center message-pop"
+                    style={{ animationDelay: `${index * 0.1}s` }}
                   >
-                    {message.sender === "user" ? "You" : "AI"}
-                  </div>
-                  <div className="flex-1 message-container relative overflow-hidden">
                     <div
-                      className={`text-5xl font-bold leading-relaxed title-breathe break-words overflow-wrap-anywhere ${
+                      className={`text-4xl font-semibold min-w-[100px] text-center ${
                         message.sender === "user"
-                          ? "text-shimmer-user"
-                          : "text-shimmer-ai"
+                          ? "text-pink-700"
+                          : "text-cyan-700"
                       }`}
                     >
-                      {renderMessageText(message.text)}
+                      {message.sender === "user" ? "User" : "AI"}
                     </div>
-                    <div className="shine"></div>
+                    <div className="flex-1 message-container relative overflow-hidden">
+                      <div
+                        className={`text-5xl font-bold leading-relaxed title-breathe break-words overflow-wrap-anywhere border-l-4 pl-6 pr-6 ${
+                          message.sender === "user"
+                            ? "text-shimmer-user border-pink-700"
+                            : "text-shimmer-ai border-cyan-700"
+                        }`}
+                      >
+                        {renderMessageText(message.text, index)}
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Inline Feedback Display */}
+                  {selectedFeedback?.messageIndex === index &&
+                    feedbackMap[selectedFeedback.alias] && (
+                      <div
+                        className={`ml-[124px] bg-gray-800/80 border border-purple-500/30 rounded-xl p-6 ${isClosingFeedback ? "blink-close" : "blink-open"}`}
+                      >
+                        <div className="text-gray-200 text-lg leading-relaxed">
+                          {feedbackMap[selectedFeedback.alias][1]}
+                        </div>
+                        <div className="mt-4 flex justify-end">
+                          <button
+                            onClick={handleCloseFeedback}
+                            className="text-sm text-purple-400 hover:text-purple-300 transition-colors"
+                          >
+                            Close ✕
+                          </button>
+                        </div>
+                      </div>
+                    )}
                 </div>
               ))}
             </div>
@@ -181,64 +224,6 @@ export default function ResultsContent() {
           </div>
         )}
       </div>
-
-      {/* Feedback Modal */}
-      {selectedAlias && feedbackMap[selectedAlias] && (
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={() => setSelectedAlias(null)}
-        >
-          <div
-            className="bg-gray-900 border border-gray-700 rounded-2xl p-8 max-w-2xl w-full shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-between items-start mb-6">
-              <h3 className="text-3xl font-bold text-white">AI Feedback</h3>
-              <button
-                onClick={() => setSelectedAlias(null)}
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            <div className="mb-4">
-              <div className="text-lg text-gray-400 mb-2">Original text:</div>
-              <div className="bg-gray-800 border border-gray-700 rounded-lg p-4 text-white text-xl">
-                "{feedbackMap[selectedAlias][0]}"
-              </div>
-            </div>
-
-            <div>
-              <div className="text-lg text-gray-400 mb-2">Analysis:</div>
-              <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-lg p-4 text-gray-200 text-xl leading-relaxed">
-                {feedbackMap[selectedAlias][1]}
-              </div>
-            </div>
-
-            <div className="mt-6 flex justify-end">
-              <button
-                onClick={() => setSelectedAlias(null)}
-                className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white text-lg rounded-full transition-colors font-medium"
-              >
-                Got it!
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
