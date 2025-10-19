@@ -85,9 +85,9 @@ export const processMessage = async (req, res) => {
     // Use ElevenLabs service to synthesize speech (returns Buffer)
     let audioBuffer = null;
     switch (process.env.STAGE) {
-      case 'prod':
+      case 'dev':
         try {
-          audioBuffer = await synthesizeSpeech(aiResponse, voiceId || process.env.DEFAULT_VOICE_ID);
+          audioBuffer = await synthesizeSpeech(aiResponse);
           console.log('🎵 Audio buffer generated from ElevenLabs service');
         } catch (err) {
           console.warn('ElevenLabs service failed or not configured:', err.message);
@@ -96,7 +96,7 @@ export const processMessage = async (req, res) => {
             // Attempt server-side playback for dev/testing
         if (audioBuffer) {
           try {
-            await play(audioBuffer);
+            play(audioBuffer);
             console.log('▶️ Played audio on server');
           } catch (err) {
             console.warn('Server playback failed:', err.message);

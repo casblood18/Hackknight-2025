@@ -1,27 +1,20 @@
 // ElevenLabs TTS service: synthesize text to audio using ELEVENLABS_API_URL and ELEVENLABS_API_KEY
 // Exports: synthesizeSpeech(text, voiceId)
+import { ElevenLabsClient, play } from '@elevenlabs/elevenlabs-js';
 
-export async function synthesizeSpeech(text, voiceId = process.env.DEFAULT_VOICE_ID) {
-	if (!process.env.ELEVENLABS_API_URL || !process.env.ELEVENLABS_API_KEY) {
-		throw new Error('ELEVENLABS_API_URL or ELEVENLABS_API_KEY not set');
-	}
-
-	const url = `${process.env.ELEVENLABS_API_URL}/text-to-speech/${voiceId}`;
-	const resp = await fetch(url, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			'xi-api-key': process.env.ELEVENLABS_API_KEY,
-		},
-		body: JSON.stringify({ text }),
+export async function synthesizeSpeech(text) {
+	const elevenlabs = new ElevenLabsClient({
+		apiKey: process.env.ELEVENLABS_API_KEY
 	});
 
-	if (!resp.ok) {
-		const txt = await resp.text();
-		throw new Error(`ElevenLabs API error: ${resp.status} ${txt}`);
-	}
-
-	// Return raw audio buffer
-	const arrayBuffer = await resp.arrayBuffer();
-	return Buffer.from(arrayBuffer);
+	const audio = await elevenlabs.textToSpeech.convert(
+		"21m00Tcm4TlvDq8ikWAM", // Default voice ID
+		{
+		text: text,
+		modelId: "eleven_multilingual_v2",
+		outputFormat: "mp3_44100_128",
+		}
+	);
+	play(audio);
+	return null;
 }
