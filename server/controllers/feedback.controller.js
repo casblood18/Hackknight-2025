@@ -81,7 +81,7 @@ Now analyze the transcript provided after this instruction and produce the outpu
 	// Use the centralized gemini service to get model output. If the service fails or is not configured,
 	// fall back to returning the prompt for testing parity with previous behavior.
 	try {
-		const data = await generateFromGemini(prompt);
+		const data = await GoogleGenerativeAI(prompt);
 		// Expect the service to return the model text directly. If it returns an object, try to extract text.
 		if (typeof data === 'string') return data;
 		if (data && (data.output || data.text || data.choices)) {

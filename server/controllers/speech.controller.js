@@ -64,7 +64,7 @@ export const processMessage = async (req, res) => {
     switch (process.env.STAGE) {
       case 'prod':
         try {
-          aiResponse = await generateFromGemini(prompt);
+          aiResponse = await GoogleGenerativeAI(prompt);
           console.log('✨ Gemini response:', aiResponse);
         } catch (err) {
           console.warn('Gemini service failed, falling back to mock response:', err.message);
