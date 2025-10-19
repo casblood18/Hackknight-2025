@@ -45,10 +45,9 @@ export default function Home() {
     messages,
     isProcessing,
     sendMessage,
-    setScenario,
     clearConversation,
     error,
-  } = useSpeechAI(sessionIdRef.current);
+  } = useSpeechAI(sessionIdRef.current, selectedScenario);
 
   // Initialize speech recognition
   useEffect(() => {
@@ -105,14 +104,7 @@ export default function Home() {
         recognitionRef.current = recognition;
       }
     }
-  }, [isStarted, isListening]);
-
-  // Set initial scenario when conversation starts
-  useEffect(() => {
-    if (isStarted) {
-      setScenario(selectedScenario).catch(console.error);
-    }
-  }, [isStarted, selectedScenario, setScenario]);
+  }, [isStarted, selectedScenario, isListening]);
 
   // Auto-scroll to bottom
   useEffect(() => {
