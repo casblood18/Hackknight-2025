@@ -42,8 +42,6 @@ Output format MUST follow this structure exactly for each important user point o
 
 (important point of interest should be in parentheses)
 ------------------------------------------------
-feedback 1
-feedback 2
 
 so for example:
 input:
@@ -63,17 +61,18 @@ ai: That’s okay! Maybe we can find something that’ll make you want to. Do yo
 user: (I guess).
 ai: Nice. [hands over a book] This one’s a collection of short stories about people who talk to strangers and accidentally make friends. It’s light but surprisingly sweet.
 ----
-feedback 1: Avoid non-committal phrases like "I dunno"; be more specific to help the ai assist you better.
-feedback 2: Avoid non-committal phrases like "I guess"; be more decisive to guide the conversation.
+feedback: Avoid non-committal phrases like "I dunno"; be more specific to help the ai assist you better.
+feedback: Avoid non-committal phrases like "I guess"; be more decisive to guide the conversation.
 
 Rules:
-- For each highlight line, provide one matching feedback block below the dashed line(add the line in the output '----'). The number of highlights should correspond 1:1 with the number of feedback blocks.
+- The number of highlights should correspond 1:1 with the number of feedback blocks.
 - Keep highlights concise (one short sentence or phrase) and place them verbatim in parenthesis '('important point of interest')' FEEDBACK SHOULD MAINLY BE ABOUT THE POINT OF INTEREST.
 - Feedback lines should be short, actionable, and only address the user's content/intent/behavior.
 - Do not include commentary about ai messages.
-- There does not need to be a highlighted point for every user message for feedback.
+- There does not need to be a highlighted point for every user message for feedback, and there could be multiple point of interest in a dialouge.
 - Preserve the original content; do not paraphrase user messages inside the feedback beyond what is necessary for the highlight.
 - We want the original input, but with highlights marked and feedback provided separately below the '----' we also added for the output.
+- DO NOT USE SEMICOLON OUTSIDE OF "ai:", "user:", and "feedback:"
 Now analyze the transcript provided after this instruction and produce the output in the requested exact format.`;
 
 	const prompt = `${preprompt}\n\nTranscript:\n${transcript}`;
@@ -97,7 +96,7 @@ Now analyze the transcript provided after this instruction and produce the outpu
 // Transform the raw model output text into { messages, highlights }
 export function transformGeminiOutput(feedbackText) {
 	const text = String(feedbackText ?? '');
-	// 1) Split sections by the first dashed divider (a line of >=3 dashes)
+	// 1) Split sections by the first dashed divider (a line of >=3 dashes) or by the first 'feedback:' line if no dashes
 	let head = text;
 	let tail = '';
 	const dashMatch = text.match(/\n-{3,}\n/);
@@ -105,60 +104,72 @@ export function transformGeminiOutput(feedbackText) {
 		const idx = text.indexOf(dashMatch[0]);
 		head = text.slice(0, idx).trim();
 		tail = text.slice(idx + dashMatch[0].length).trim();
+	} else {
+		// If there's no dashed divider, look for a 'feedback:' line and treat everything from there as tail
+		const fbStartIdx = text.search(/(^|\n)\s*feedback\s*\d*\s*:/i);
+		if (fbStartIdx !== -1) {
+			head = text.slice(0, fbStartIdx).trim();
+			tail = text.slice(fbStartIdx).trim();
+		}
 	}
 
-	// 2) Parse messages from head: lines starting with 'user:' or 'ai:' (case-insensitive)
-	const lines = head.split(/\r?\n/);
+	// 2) Parse messages from head using a regex that captures user:/ai: blocks even if labels appear on the same line
 	const parsedMessages = [];
-	let current = null;
 	let highlightCounter = 0;
 	const highlightsFromMessages = []; // keeps original highlighted strings in order
 
-	for (let rawLine of lines) {
-		const line = rawLine.trim();
-		const labelMatch = line.match(/^(user|ai)\s*:\s*/i);
-		if (labelMatch) {
-			if (current) parsedMessages.push(current);
-			current = { sender: labelMatch[1].toLowerCase(), text: line.replace(labelMatch[0], '') };
-		} else {
-			if (!current) continue;
-			if (current.text.length > 0) current.text += '\n' + line; else current.text = line;
-		}
+	// Match 'user:' or 'ai:' then capture everything up to the next label (user: or ai:) or end of string.
+	// This does not require a newline before the next label so it works when labels are inline.
+	const msgRegex = /(user|ai)\s*:\s*([\s\S]*?)(?=(?:\s*(?:user|ai)\s*:)|$)/gim;
+	let m;
+	while ((m = msgRegex.exec(head)) !== null) {
+		const sender = m[1].toLowerCase();
+		let body = m[2].trim();
 
-		// capture special (highlight) wrappers if present in the head
-		if (current) {
-			current.text = current.text.replace(/\(highlight\)\s*([\s\S]*?)\s*\(highlight\)/gi, function (_, inner) {
-				highlightCounter += 1;
+		// capture special (highlight) wrappers if present in the message body
+		body = body.replace(/\(highlight\)\s*([\s\S]*?)\s*\(highlight\)/gi, function (_, inner) {
+			highlightCounter += 1;
+			const val = inner.trim();
+			highlightsFromMessages.push(val);
+			return `(highlighted${highlightCounter})`;
+		});
+
+		// Also capture single-parenthesis highlights like (I dunno) in user messages
+		if (sender === 'user') {
+			body = body.replace(/\(([^()]{1,500}?)\)/g, function (_, inner) {
 				const val = inner.trim();
+				if (!val) return `(${inner})`;
+				highlightCounter += 1;
 				highlightsFromMessages.push(val);
-				// replace with a stable placeholder used as a key in the highlights map
 				return `(highlighted${highlightCounter})`;
 			});
 		}
-	}
-	if (current) parsedMessages.push(current);
 
-	// 3) Parse highlight-feedback pairs from tail. Try explicit (highlight) blocks first
+		parsedMessages.push({ sender, text: body });
+	}
+
+	// 3) Parse highlight-feedback pairs from tail.
+	// First try explicit highlight blocks like (highlight) ... (highlight) --- feedback
 	const pairs = [];
 	const pairRegex = /\(highlight\)\s*([\s\S]*?)\s*\(highlight\)\s*[-]{3,}\s*[\r\n]+([\s\S]*?)(?=(?:\(highlight\)\s*[\s\S]*?\s*\(highlight\))|$)/gim;
-	let m;
 	while ((m = pairRegex.exec(tail)) !== null) {
 		const highlightText = m[1].trim();
 		const feedbackBlock = m[2].trim();
 		pairs.push({ highlight: highlightText, feedback: feedbackBlock });
 	}
 
-	// If no explicit pairs found, try to parse fallback feedback lines like 'feedback 1: ...' in order
+	// If no explicit pairs found, look for 'feedback:' entries in the tail and map them in order
 	if (pairs.length === 0 && tail) {
-		const fallback = [];
-		const fbRegex = /feedback\s*\d+\s*:\s*([\s\S]*?)(?=(?:\nfeedback\s*\d+\s*:)|$)/gim;
+		const feedbacks = [];
+		// Match each 'feedback:' entry even if they're on the same line or separated by spaces/newlines
+		const fbRegex = /feedback\s*\d*\s*:\s*([\s\S]*?)(?=(?:\s*feedback\s*\d*\s*:)|$)/gim;
 		let f;
 		while ((f = fbRegex.exec(tail)) !== null) {
-			fallback.push(f[1].trim());
+			feedbacks.push(f[1].trim());
 		}
-		// Map fallback feedbacks to highlightsFromMessages by order
-		for (let i = 0; i < fallback.length; i++) {
-			pairs.push({ highlight: (highlightsFromMessages[i] || ''), feedback: fallback[i] });
+
+		for (let i = 0; i < feedbacks.length; i++) {
+			pairs.push({ highlight: (highlightsFromMessages[i] || ''), feedback: feedbacks[i] });
 		}
 	}
 
