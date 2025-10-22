@@ -19,22 +19,21 @@ export interface FeedbackResponse {
 interface UseSpeechAIReturn {
   messages: Message[];
   isProcessing: boolean;
-  sendMessage: (text: string) => Promise<void>;
+  sendMessage: (text: string, scenario: string) => Promise<void>;
+  startConversation: (scenario: string) => Promise<void>;
   clearConversation: () => Promise<void>;
   error: string | null;
 }
 
 export function useSpeechAI(
   sessionId: string = "default",
-  currentScenario: string = "casual"
 ): UseSpeechAIReturn {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  let selectedScenario = useState<string | null>(null);
 
   const sendMessage = useCallback(
-    async (text: string) => {
+    async (text: string, scenario: string) => {
       try {
         console.log("🎤 Sending message:", text);
         setIsProcessing(true);
@@ -65,7 +64,7 @@ export function useSpeechAI(
             body: JSON.stringify({
               message: text,
               sessionId,
-              scenario: currentScenario,
+              scenario: scenario,
             }),
           }
         );
@@ -108,6 +107,44 @@ export function useSpeechAI(
     [sessionId]
   );
 
+  const startConversation = useCallback(async (scenario: string) => {
+    setIsProcessing(true);
+    setError(null);
+
+    const response = await fetch(
+      "http://localhost:5001/api/speech/start",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          sessionId,
+          scenario: scenario,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    setMessages((prev) => {
+      console.log("AI BEGINS CONVO")
+      return [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          text: data.text,
+          sender: "ai",
+          timestamp: new Date(),
+        }
+      ]
+    })
+
+    setIsProcessing(false);
+  }, [sessionId]);
+
+
   const clearConversation = useCallback(async () => {
     try {
       setError(null);
@@ -130,6 +167,7 @@ export function useSpeechAI(
     messages,
     isProcessing,
     sendMessage,
+    startConversation,
     clearConversation,
     error,
   };

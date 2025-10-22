@@ -133,6 +133,89 @@ export const processMessage = async (req, res) => {
   }
 };
 
+export const startConversation = async (req, res) => {
+  console.log("Backend got ping to start conversation")
+  const { sessionId, scenario } = req.body;
+  console.log("Recieved:", { sessionId, scenario });
+
+  if (!conversations.has(sessionId)) {
+    console.log('🆕 Creating new conversation for session:', sessionId);
+    conversations.set(sessionId, {
+      messages: [],
+      scenario: scenario || 'casual conversation'
+    });
+  }
+
+  const conversation = conversations.get(sessionId);
+  console.log('🗣️ Current scenario:', conversation.scenario);
+  console.log('💬 Message history length:', conversation.messages.length);
+
+  conversation.scenario = scenario;
+
+  // now PROMPT GEMINI
+  const prompt = `
+    Scenario: ${conversation.scenario}
+
+    Our mission is to simulate a natural sounding converation.
+    You are beginning the natural conversation. Assume a role in the conversation, and immediately begin role playing. Exclusively output dialogue, do not output any actions.
+    Open the conversation according to the scenario. For instance, if the scenario is "Ordering a sandwich", assume the identity of the wait staff. If the scenario is "casual", open with a casual introduction.
+    The user is picking the scenario. So you must assume the role of the one the user is speaking to. For instance, if the scenario is "Ordering a sandwich", you can assume that the user is the customer, so you must be the wait staff.
+    Try to avoid any brackets, parentheses, ellipses, or other text renditions of roleplay.
+    Keep responses concise but engaging.
+  `;
+
+  let aiResponse;
+  switch (process.env.STAGE) {
+    case 'prod':
+      try {
+        aiResponse = await generateFromGemini(prompt);
+        console.log('✨ Gemini response:', aiResponse);
+      } catch (err) {
+        console.warn('Gemini service failed, falling back to mock response:', err.message);
+        aiResponse = 'mock response';
+      }
+      break;
+    case 'dev':
+      aiResponse = 'mock opener';
+      break;
+  }
+
+  conversation.messages.push({
+    role: 'assistant',
+    content: aiResponse
+  });
+
+  let audioBuffer = null;
+  switch (process.env.STAGE) {
+    case 'prod':
+      try {
+        audioBuffer = await synthesizeSpeech(aiResponse);
+        console.log('🎵 Audio buffer generated from ElevenLabs service');
+      } catch (err) {
+        console.warn('ElevenLabs service failed or not configured:', err.message);
+        audioBuffer = null;
+      }
+          // Attempt server-side playback for dev/testing
+      if (audioBuffer) {
+        try {
+          play(audioBuffer);
+          console.log('▶️ Played audio on server');
+        } catch (err) {
+          console.warn('Server playback failed:', err.message);
+        }
+      }
+      break;
+    case 'dev':
+      break;
+  }
+
+  res.json({
+    text: aiResponse,
+    scenario: conversation.scenario,
+    history: conversation.messages
+  });
+}
+
 export const clearContext = (req, res) => {
   const { sessionId } = req.body;
 
